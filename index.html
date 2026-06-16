@@ -179,6 +179,8 @@
       font-weight: bold;
       box-shadow: 0 4px 0 #3d2b1a;
       transition: all 0.1s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
 
     button:active {
@@ -438,13 +440,22 @@
 
       container.addEventListener('click', handleClick);
 
+      // Компьютерное управление: пробел для фонаря, F для фонаря
       document.addEventListener('keydown', function(e) {
         if (e.code === 'Space') {
           e.preventDefault();
-          if (!gameRunning && !gameOver) startGame();
-          else if (gameOver) restartGame();
+          if (!gameRunning && !gameOver) {
+            startGame();
+          } else if (gameOver) {
+            restartGame();
+          } else {
+            toggleLantern();
+          }
         }
-        if (e.code === 'KeyF') { e.preventDefault(); toggleLantern(); }
+        if (e.code === 'KeyF') { 
+          e.preventDefault(); 
+          toggleLantern(); 
+        }
       });
 
       function handleClick() {
@@ -702,10 +713,26 @@
         } else {
           overlay.innerHTML = '<h1 style="color:#ff4444;">👻 ДУХИ ОДОЛЕЛИ</h1><p style="font-size:16px;">Найдено: ' + found + '/12 | ⭐ ' + score + '</p><button id="restartBtn">🔄 ПОПРОБОВАТЬ СНОВА</button>';
         }
+        
+        // Исправление для кнопки "Попробовать снова" - обработчики для всех устройств
         setTimeout(function() {
           var rb = document.getElementById('restartBtn');
-          if (rb) rb.onclick = restartGame;
-        }, 100);
+          if (rb) {
+            // Удаляем старые обработчики, чтобы избежать дублирования
+            rb.replaceWith(rb.cloneNode(true));
+            var newRb = document.getElementById('restartBtn');
+            // Добавляем обработчики для клика и касания
+            newRb.addEventListener('click', function(e) {
+              e.stopPropagation();
+              restartGame();
+            });
+            newRb.addEventListener('touchstart', function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              restartGame();
+            }, { passive: false });
+          }
+        }, 50);
       }
 
       function gameLoop() {
@@ -725,7 +752,9 @@
         updateUI(); draw();
       }
 
-      function restartGame() { startGame(); }
+      function restartGame() { 
+        startGame(); 
+      }
       
       // Исправление для мобильных устройств: обработка нажатия на кнопку "Начать"
       startBtn.addEventListener('click', function(e) {
