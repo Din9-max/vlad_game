@@ -1,14 +1,3 @@
-Код переписан так, чтобы интерактив для «Томской Писаницы» адаптивно занимал всё доступное пространство экрана, будь то смартфон, планшет или монитор. Этот вариант можно смело использовать как готовый пример на занятиях — ребята легко разберутся, как работает привязка объектов к динамическим размерам `window.innerWidth` и `window.innerHeight` вместо жестко заданных координат.
-
-### Что было изменено:
-
-1. **Игровой мир теперь растягивается вправо и вниз.** Убраны фиксированные рамки 1000x650. Вместо этого `canvas` работает в координатах реального окна 1:1. Генерация гор, объектов и спавн игрока теперь вычисляются в процентах от ширины и высоты экрана.
-2. **Увеличен интерфейс.** Верхняя панель стала крупнее, отступы (`padding`) и шрифты адаптированы через `clamp()` для комфортного нажатия пальцем.
-3. **Удалены лишние преобразования координат.** Функции `screenToWorld` и `worldToScreen` больше не нужны, так как экран и есть игровой мир. Тапы срабатывают точно там, где находится палец.
-
-Вот обновленный и сбалансированный код:
-
-```html
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -23,237 +12,230 @@
       -webkit-tap-highlight-color: transparent;
     }
 
+    /* Внешняя область теперь на белом фоне */
     html, body {
       width: 100%;
       height: 100%;
-      overflow: hidden;
-      background: #1a1410;
+      background: #ffffff;
       font-family: 'Georgia', serif;
       touch-action: manipulation;
       -webkit-user-select: none;
       user-select: none;
-      position: fixed;
-    }
-
-    #game-container {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: #87CEEB;
-      z-index: 1;
-    }
-
-    canvas {
-      display: block;
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-    }
-
-    #overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0, 0, 0, 0.92);
       display: flex;
       flex-direction: column;
+      align-items: center;
+      padding: clamp(10px, 2vh, 20px);
+      gap: clamp(10px, 2vh, 15px);
+      overflow: hidden;
+    }
+
+    /* Блок инструкций в одну линию */
+    .instructions {
+      background: rgba(30, 15, 5, 0.95);
+      padding: clamp(8px, 1.5vh, 14px) clamp(12px, 2vw, 24px);
+      border-radius: 12px;
+      border: 2px solid #8b6914;
+      width: min(100%, 1024px);
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
       justify-content: center;
       align-items: center;
-      color: white;
-      z-index: 10;
-      padding: clamp(15px, 3vh, 30px);
-      gap: clamp(10px, 2vh, 20px);
-      overflow-y: auto;
-    }
-
-    h1 {
-      color: #ff8c00;
-      font-size: clamp(28px, 8vw, 56px);
-      text-align: center;
-      text-shadow: 0 0 20px rgba(255, 140, 0, 0.5);
-    }
-
-    .subtitle {
-      color: #ffaa33;
-      font-size: clamp(16px, 5vw, 28px);
-      font-style: italic;
-      text-align: center;
-    }
-
-    .instructions {
-      background: rgba(30, 15, 5, 0.9);
-      padding: clamp(12px, 3vh, 24px) clamp(16px, 4vw, 32px);
-      border-radius: 16px;
-      border: 2px solid #8b6914;
-      width: min(96%, 550px);
-      max-height: 50vh;
-      overflow-y: auto;
+      gap: clamp(10px, 2vw, 20px);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+      z-index: 15;
     }
 
     .instructions p {
-      margin: 6px 0;
-      font-size: clamp(14px, 3.5vw, 20px);
-      text-align: left;
+      margin: 0;
+      font-size: clamp(12px, 2.5vw, 15px);
       color: #e8d5b0;
-      line-height: 1.5;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
     .key-hint {
       display: inline-block;
       background: #ffd700;
       color: #000;
-      padding: 2px 8px;
-      border-radius: 6px;
+      padding: 1px 6px;
+      border-radius: 4px;
       font-weight: bold;
-      font-size: clamp(12px, 3vw, 18px);
+      font-size: clamp(10px, 2.2vw, 13px);
     }
 
-    button {
-      background: #5a3d2b;
-      color: #ffd700;
-      border: 3px solid #8b6914;
-      padding: clamp(14px, 3vh, 22px) clamp(24px, 8vw, 48px);
-      font-size: clamp(18px, 5.5vw, 28px);
-      cursor: pointer;
-      border-radius: 16px;
-      font-family: 'Georgia', serif;
-      font-weight: bold;
-      box-shadow: 0 6px 0 #3d2b1a;
-      min-height: 56px;
-      min-width: 200px;
-      transition: all 0.1s;
+    /* Изолированная игровая область в рамке */
+    #game-container {
+      position: relative;
+      width: min(100%, 1024px);
+      /* Занимает оставшуюся высоту экрана с учетом отступов */
+      height: calc(100vh - clamp(10px, 2vh, 20px) * 2 - 70px); 
+      background: #1a1410;
+      border: 4px solid #5a3d2b;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
     }
 
-    button:active {
-      transform: translateY(4px);
-      box-shadow: 0 2px 0 #3d2b1a;
-      background: #8b6914;
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: #87CEEB;
     }
 
+    /* Все элементы UI теперь абсолютны внутри контейнера игры */
     #ui-bar {
-      position: fixed;
-      top: clamp(8px, 2vh, 16px);
-      left: clamp(8px, 2vw, 16px);
-      right: clamp(8px, 2vw, 16px);
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      right: 12px;
       z-index: 5;
       pointer-events: none;
       display: flex;
       justify-content: center;
       flex-wrap: wrap;
-      gap: clamp(6px, 1.5vh, 12px);
+      gap: 6px;
     }
 
     .ui-item {
       background: rgba(0, 0, 0, 0.85);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
       color: #ffd700;
-      padding: clamp(6px, 1.5vh, 10px) clamp(10px, 3vw, 18px);
-      border-radius: 14px;
-      font-size: clamp(14px, 4vw, 20px);
+      padding: 6px 12px;
+      border-radius: 10px;
+      font-size: clamp(12px, 3.5vw, 16px);
       font-weight: bold;
-      border: 2px solid #8b6914;
+      border: 1.5px solid #8b6914;
       white-space: nowrap;
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-    }
-
-    .ui-item .icon {
-      font-size: 1.2em;
+      gap: 4px;
     }
 
     #lantern-indicator {
-      position: fixed;
-      bottom: clamp(20px, 4vh, 40px);
+      position: absolute;
+      bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 5;
       pointer-events: none;
       background: rgba(0, 0, 0, 0.9);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
       color: #ffff00;
-      padding: clamp(8px, 2vh, 14px) clamp(16px, 4vw, 28px);
-      border-radius: 24px;
-      font-size: clamp(14px, 4vw, 22px);
+      padding: 8px 20px;
+      border-radius: 20px;
+      font-size: clamp(12px, 3.5vw, 16px);
       font-weight: bold;
       border: 2px solid #ffd700;
       display: none;
       white-space: nowrap;
     }
 
-    .player-loot {
-      position: fixed;
+    #overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(26, 20, 16, 0.95);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      z-index: 10;
+      padding: 20px;
+      gap: 15px;
+    }
+
+    h1 {
+      color: #ff8c00;
+      font-size: clamp(24px, 6vw, 42px);
+      text-align: center;
+      text-shadow: 0 0 15px rgba(255, 140, 0, 0.4);
+    }
+
+    .subtitle {
+      color: #ffaa33;
+      font-size: clamp(14px, 4vw, 20px);
+      font-style: italic;
+      text-align: center;
+    }
+
+    button {
+      background: #5a3d2b;
+      color: #ffd700;
+      border: 3px solid #8b6914;
+      padding: 12px 36px;
+      font-size: clamp(16px, 4.5vw, 22px);
+      cursor: pointer;
+      border-radius: 12px;
+      font-family: 'Georgia', serif;
+      font-weight: bold;
+      box-shadow: 0 4px 0 #3d2b1a;
+      transition: all 0.1s;
+    }
+
+    button:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 #3d2b1a;
+      background: #8b6914;
+    }
+
+    .player-loot, .glyph-label {
+      position: absolute;
       pointer-events: none;
       z-index: 6;
       font-weight: bold;
-      font-family: 'Georgia', serif;
-      text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.9);
-      animation: floatUp 1.5s ease-out forwards;
+      text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.9);
+      animation: floatUp 1.2s ease-out forwards;
       white-space: nowrap;
-      font-size: clamp(16px, 4vw, 24px);
     }
+
+    .player-loot { font-size: clamp(14px, 3.5vw, 20px); }
+    .glyph-label { font-size: clamp(16px, 4vw, 24px); }
 
     @keyframes floatUp {
       0% { opacity: 1; transform: translateY(0); }
-      100% { opacity: 0; transform: translateY(-80px); }
-    }
-
-    .glyph-label {
-      position: fixed;
-      pointer-events: none;
-      z-index: 6;
-      font-weight: bold;
-      font-family: 'Georgia', serif;
-      text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.9);
-      animation: floatUpSlow 2s ease-out forwards;
-      white-space: nowrap;
-      font-size: clamp(18px, 4.5vw, 28px);
-    }
-
-    @keyframes floatUpSlow {
-      0% { opacity: 1; transform: translateY(0) scale(1); }
-      50% { opacity: 1; transform: translateY(-40px) scale(1.2); }
-      100% { opacity: 0; transform: translateY(-90px) scale(0.8); }
+      100% { opacity: 0; transform: translateY(-60px); }
     }
   </style>
 </head>
 <body>
+
+  <div class="instructions">
+    <p>🎯 Найти: 12 рисунков</p>
+    <p>👆 <span class="key-hint">СВАЙП</span> движение</p>
+    <p>👆 <span class="key-hint">ТАП</span> разбить/собрать</p>
+    <p>🔦 <span class="key-hint">ДОЛГИЙ ТАП</span> фонарь</p>
+    <p>⛏️ Кирки | 🔮 Кристаллы | 👻 Духи (55%)</p>
+  </div>
+
   <div id="game-container">
     <canvas id="gameCanvas"></canvas>
-  </div>
 
-  <div id="ui-bar">
-    <span class="ui-item"><span class="icon">🗿</span> <span id="fd">0</span>/12</span>
-    <span class="ui-item"><span class="icon">❤️</span> <span id="hd">5</span></span>
-    <span class="ui-item"><span class="icon">⛏️</span> <span id="td">3</span></span>
-    <span class="ui-item"><span class="icon">🔮</span> <span id="cd">0</span></span>
-    <span class="ui-item"><span class="icon">⭐</span> <span id="sd">0</span></span>
-    <span class="ui-item"><span class="icon">👻</span> <span id="gd">0</span></span>
-    <span class="ui-item"><span class="icon">🔦</span> <span id="ed">100</span>%</span>
-  </div>
-
-  <div id="lantern-indicator">🔦 ФОНАРЬ ВКЛЮЧЕН</div>
-
-  <div id="overlay">
-    <h1>🗿 ТОМСКАЯ ПИСАНИЦА</h1>
-    <p class="subtitle">Наследие Древних Шаманов</p>
-    <div class="instructions">
-      <p>🎯 Найдите все 12 рисунков</p>
-      <p>👆 <span class="key-hint">СВАЙП</span> — движение</p>
-      <p>👆 <span class="key-hint">ТАП</span> — разбить / собрать</p>
-      <p>🔦 <span class="key-hint">ДОЛГИЙ ТАП</span> — фонарь</p>
-      <p>⛏️ Кирки (жёлтые) | 🔮 Кристаллы (фиолетовые)</p>
-      <p>👻 Духи при разбитии (55%)</p>
+    <div id="ui-bar">
+      <span class="ui-item"><span class="icon">🗿</span> <span id="fd">0</span>/12</span>
+      <span class="ui-item"><span class="icon">❤️</span> <span id="hd">5</span></span>
+      <span class="ui-item"><span class="icon">⛏️</span> <span id="td">3</span></span>
+      <span class="ui-item"><span class="icon">🔮</span> <span id="cd">0</span></span>
+      <span class="ui-item"><span class="icon">⭐</span> <span id="sd">0</span></span>
+      <span class="ui-item"><span class="icon">👻</span> <span id="gd">0</span></span>
+      <span class="ui-item"><span class="icon">🔦</span> <span id="ed">100</span>%</span>
     </div>
-    <button id="startBtn">🏛️ НАЧАТЬ</button>
+
+    <div id="lantern-indicator">🔦 ФОНАРЬ ВКЛЮЧЕН</div>
+
+    <div id="overlay">
+      <h1>🗿 ТОМСКАЯ ПИСАНИЦА</h1>
+      <p class="subtitle">Наследие Древних Шаманов</p>
+      <button id="startBtn">🏛️ НАЧАТЬ</button>
+    </div>
   </div>
 
   <script>
@@ -268,8 +250,7 @@
       var W, H;
       var gameRunning = false;
       var gameOver = false;
-      var mouseX = window.innerWidth / 2;
-      var mouseY = window.innerHeight / 2;
+      var mouseX = 0, mouseY = 0;
       
       var score = 0, health = 5, tools = 3, crystals = 0, found = 0;
       var lantern = false, energy = 100, hurt = 0, frame = 0;
@@ -292,19 +273,20 @@
 
       var drawings = [], ghosts = [], toolItems = [], crystalItems = [], particles = [];
 
+      // Теперь размеры рассчитываются строго по контейнеру игры
       function resize() {
-        W = window.innerWidth;
-        H = window.innerHeight;
+        W = container.clientWidth;
+        H = container.clientHeight;
         canvas.width = W;
         canvas.height = H;
+        if (!gameRunning) {
+          mouseX = W / 2;
+          mouseY = H / 2;
+        }
       }
 
       window.addEventListener('resize', resize);
-      window.addEventListener('orientationchange', function() { setTimeout(resize, 200); });
-      if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', resize);
-      }
-      resize();
+      setTimeout(resize, 100);
 
       function placeDrawings() {
         drawings = [];
@@ -312,12 +294,11 @@
         for (var i = 0; i < drawingsData.length; i++) {
           var ok = false, tries = 0, px, py;
           while (!ok && tries < 100) {
-            // Раскидываем по всей ширине и от верхней трети до низа
             px = 40 + Math.random() * (W - 80);
-            py = H * 0.2 + Math.random() * (H * 0.7);
+            py = H * 0.25 + Math.random() * (H * 0.65);
             ok = true;
             for (var j = 0; j < used.length; j++) {
-              if (Math.sqrt((px - used[j].x) ** 2 + (py - used[j].y) ** 2) < 80) {
+              if (Math.sqrt((px - used[j].x) ** 2 + (py - used[j].y) ** 2) < 70) {
                 ok = false; break;
               }
             }
@@ -334,15 +315,15 @@
 
       function spawnTools() {
         toolItems = [];
-        for (var i = 0; i < 15; i++) {
-          toolItems.push({ x: 30 + Math.random() * (W - 60), y: H * 0.15 + Math.random() * (H * 0.8) });
+        for (var i = 0; i < 12; i++) {
+          toolItems.push({ x: 30 + Math.random() * (W - 60), y: H * 0.2 + Math.random() * (H * 0.75) });
         }
       }
 
       function spawnCrystals() {
         crystalItems = [];
-        for (var i = 0; i < 10; i++) {
-          crystalItems.push({ x: 30 + Math.random() * (W - 60), y: H * 0.15 + Math.random() * (H * 0.8) });
+        for (var i = 0; i < 8; i++) {
+          crystalItems.push({ x: 30 + Math.random() * (W - 60), y: H * 0.2 + Math.random() * (H * 0.75) });
         }
       }
 
@@ -350,9 +331,9 @@
         var n = 1 + Math.floor(Math.random() * 2);
         for (var i = 0; i < n; i++) {
           ghosts.push({
-            x: x + (Math.random() - 0.5) * 100,
-            y: y + (Math.random() - 0.5) * 100,
-            speed: 0.8 + Math.random() * 1.5,
+            x: x + (Math.random() - 0.5) * 60,
+            y: y + (Math.random() - 0.5) * 60,
+            speed: 0.8 + Math.random() * 1.2,
             float: Math.random() * 6.28,
             life: 400 + Math.floor(Math.random() * 200)
           });
@@ -363,22 +344,29 @@
         for (var i = 0; i < n; i++) {
           particles.push({
             x: x, y: y,
-            vx: (Math.random() - 0.5) * 6,
-            vy: (Math.random() - 0.5) * 6 - 2,
+            vx: (Math.random() - 0.5) * 5,
+            vy: (Math.random() - 0.5) * 5 - 1.5,
             life: 1, decay: 0.03, color: color,
-            size: 3 + Math.random() * 5
+            size: 3 + Math.random() * 4
           });
         }
       }
 
+      // Получение координат относительно игрового контейнера
       function getInputPos(e) {
+        var rect = container.getBoundingClientRect();
+        var clientX = e.clientX, clientY = e.clientY;
         if (e.touches && e.touches.length > 0) {
-          return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+          clientX = e.touches[0].clientX;
+          clientY = e.touches[0].clientY;
         } else if (e.changedTouches && e.changedTouches.length > 0) {
-          return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
-        } else {
-          return { x: e.clientX, y: e.clientY };
+          clientX = e.changedTouches[0].clientX;
+          clientY = e.changedTouches[0].clientY;
         }
+        return {
+          x: clientX - rect.left,
+          y: clientY - rect.top
+        };
       }
 
       function showGlyphLabel(x, y, text, color) {
@@ -389,7 +377,7 @@
         div.style.top = y + 'px';
         div.style.color = color || '#ffd700';
         container.appendChild(div);
-        setTimeout(function() { div.remove(); }, 2000);
+        setTimeout(function() { div.remove(); }, 1200);
       }
 
       function showPlayerLoot(x, y, text, color) {
@@ -397,10 +385,10 @@
         div.className = 'player-loot';
         div.textContent = text;
         div.style.left = x + 'px';
-        div.style.top = (y - 50) + 'px';
+        div.style.top = (y - 30) + 'px';
         div.style.color = color || '#ffffff';
         container.appendChild(div);
-        setTimeout(function() { div.remove(); }, 1500);
+        setTimeout(function() { div.remove(); }, 1200);
       }
 
       function toggleLantern() {
@@ -423,34 +411,32 @@
         }
         lantern = true;
         lanternInd.style.display = 'block';
-        lanternInd.textContent = '🔦 ФОНАРЬ | ' + Math.floor(energy) + '% | 🔮 ' + crystals;
       }
 
-      canvas.addEventListener('mousemove', function(e) {
+      container.addEventListener('mousemove', function(e) {
         var p = getInputPos(e); mouseX = p.x; mouseY = p.y;
       });
 
-      canvas.addEventListener('touchmove', function(e) {
+      container.addEventListener('touchmove', function(e) {
         e.preventDefault();
         var p = getInputPos(e); mouseX = p.x; mouseY = p.y;
       }, { passive: false });
 
       var touchStartTime = 0;
-      canvas.addEventListener('touchstart', function(e) {
+      container.addEventListener('touchstart', function(e) {
         e.preventDefault();
         var p = getInputPos(e); mouseX = p.x; mouseY = p.y;
         touchStartTime = Date.now();
       }, { passive: false });
 
-      canvas.addEventListener('touchend', function(e) {
+      container.addEventListener('touchend', function(e) {
         e.preventDefault();
         var dt = Date.now() - touchStartTime;
         if (dt < 300) handleClick();
         else if (dt >= 400) toggleLantern();
       });
 
-      canvas.addEventListener('click', handleClick);
-      canvas.addEventListener('contextmenu', function(e) { e.preventDefault(); toggleLantern(); });
+      container.addEventListener('click', handleClick);
 
       document.addEventListener('keydown', function(e) {
         if (e.code === 'Space') {
@@ -459,19 +445,6 @@
           else if (gameOver) restartGame();
         }
         if (e.code === 'KeyF') { e.preventDefault(); toggleLantern(); }
-        if (e.code === 'KeyC') {
-          e.preventDefault();
-          if (gameRunning && !gameOver && crystals > 0 && energy < 100) {
-            crystals--; energy = Math.min(100, energy + 40);
-            showPlayerLoot(player.x, player.y, '🔮 +40% энергии', '#cc88ff');
-            updateUI();
-            if (!lantern && energy > 0) {
-              lantern = true;
-              lanternInd.style.display = 'block';
-              lanternInd.textContent = '🔦 ФОНАРЬ | ' + Math.floor(energy) + '% | 🔮 ' + crystals;
-            }
-          }
-        }
       });
 
       function handleClick() {
@@ -479,7 +452,7 @@
 
         for (var i = toolItems.length - 1; i >= 0; i--) {
           var t = toolItems[i];
-          if (Math.sqrt((player.x - t.x) ** 2 + (player.y - t.y) ** 2) < 45) {
+          if (Math.sqrt((player.x - t.x) ** 2 + (player.y - t.y) ** 2) < 40) {
             tools++;
             addParticles(t.x, t.y, '#ffd700', 10);
             showPlayerLoot(player.x, player.y, '+1 кирка', '#ffd700');
@@ -491,7 +464,7 @@
 
         for (var i = crystalItems.length - 1; i >= 0; i--) {
           var c = crystalItems[i];
-          if (Math.sqrt((player.x - c.x) ** 2 + (player.y - c.y) ** 2) < 45) {
+          if (Math.sqrt((player.x - c.x) ** 2 + (player.y - c.y) ** 2) < 40) {
             crystals++;
             addParticles(c.x, c.y, '#cc88ff', 12);
             showPlayerLoot(player.x, player.y, '+1 🔮', '#cc88ff');
@@ -505,7 +478,7 @@
           var d = drawings[i];
           if (d.found) continue;
           var dist = Math.sqrt((player.x - d.x) ** 2 + (player.y - d.y) ** 2);
-          var range = d.hidden ? (lantern ? 70 : 0) : 65;
+          var range = d.hidden ? (lantern ? 65 : 0) : 60;
           if (dist < range && tools > 0) {
             d.found = true; found++; tools--;
             score += d.rare ? 300 : 100;
@@ -514,18 +487,18 @@
             showGlyphLabel(d.x, d.y, glyphText, glyphColor);
             
             var lootText = '';
-            if (Math.random() < 0.3) { var cc = 1 + Math.floor(Math.random() * 8); crystals += cc; lootText += '🔮+' + cc + ' '; }
-            if (Math.random() < 0.4) { var tt = 1 + Math.floor(Math.random() * 3); tools += tt; lootText += '⛏️+' + tt + ' '; }
+            if (Math.random() < 0.3) { var cc = 1 + Math.floor(Math.random() * 5); crystals += cc; lootText += '🔮+' + cc + ' '; }
+            if (Math.random() < 0.4) { var tt = 1 + Math.floor(Math.random() * 2); tools += tt; lootText += '⛏️+' + tt + ' '; }
             if (Math.random() < 0.55) { spawnGhost(d.x, d.y); lootText += '👻Духи! '; }
             
             if (lootText) showPlayerLoot(player.x, player.y, lootText.trim(), '#ffffff');
-            addParticles(d.x, d.y, '#ffd700', d.rare ? 30 : 20);
+            addParticles(d.x, d.y, '#ffd700', d.rare ? 25 : 15);
             updateUI();
             
             if (found >= 12) {
               setTimeout(function() {
                 gameOver = true; gameRunning = false; showEndScreen(true);
-              }, 1500);
+              }, 1200);
             }
             return;
           }
@@ -535,6 +508,7 @@
       function update() {
         if (!gameRunning || gameOver) return;
         frame++;
+        
         var dx = mouseX - player.x;
         var dy = mouseY - player.y;
         var dist = Math.sqrt(dx * dx + dy * dy);
@@ -544,21 +518,22 @@
           player.y += (dy / dist) * player.speed;
           player.dir = dx > 0 ? 1 : -1;
         }
-        // Ограничиваем игрока границами экрана
-        player.x = Math.max(20, Math.min(W - 20, player.x));
-        player.y = Math.max(H * 0.15, Math.min(H - 20, player.y));
+
+        // Ограничение движения строго в пределах созданной рамки
+        player.x = Math.max(25, Math.min(W - 25, player.x));
+        player.y = Math.max(H * 0.2, Math.min(H - 25, player.y));
         if (hurt > 0) hurt--;
 
         if (lantern) {
-          energy = Math.max(0, energy - 0.2);
+          energy = Math.max(0, energy - 0.25);
           if (energy <= 0) {
             lantern = false; lanternInd.style.display = 'none';
-            showPlayerLoot(player.x, player.y, 'Фонарь разряжен!', '#ff8888');
+            showPlayerLoot(player.x, player.y, 'Разряжен!', '#ff8888');
           } else {
-            lanternInd.textContent = '🔦 ФОНАРЬ | ' + Math.floor(energy) + '% | 🔮 ' + crystals;
+            lanternInd.textContent = '🔦 ' + Math.floor(energy) + '% | 🔮 ' + crystals;
           }
         } else {
-          if (energy < 100) energy = Math.min(100, energy + 0.05);
+          if (energy < 100) energy = Math.min(100, energy + 0.08);
         }
 
         for (var i = ghosts.length - 1; i >= 0; i--) {
@@ -568,9 +543,9 @@
           var sd = Math.sqrt(sx * sx + sy * sy) || 1;
           g.x += (sx / sd) * g.speed; g.y += (sy / sd) * g.speed;
           g.float += 0.05;
-          if (Math.sqrt((player.x - g.x) ** 2 + (player.y - g.y) ** 2) < 30 && hurt <= 0) {
-            health--; hurt = 50;
-            addParticles(player.x, player.y, '#ff0000', 15);
+          if (Math.sqrt((player.x - g.x) ** 2 + (player.y - g.y) ** 2) < 25 && hurt <= 0) {
+            health--; hurt = 40;
+            addParticles(player.x, player.y, '#ff0000', 12);
             showPlayerLoot(player.x, player.y, '-1 ❤️', '#ff4444');
             if (health <= 0) {
               gameOver = true; gameRunning = false; showEndScreen(false);
@@ -579,11 +554,11 @@
           if (g.life <= 0) ghosts.splice(i, 1);
         }
 
-        if (frame % 300 === 0 && toolItems.length < 8) {
-          toolItems.push({ x: 30 + Math.random() * (W - 60), y: H * 0.15 + Math.random() * (H * 0.8) });
+        if (frame % 300 === 0 && toolItems.length < 6) {
+          toolItems.push({ x: 30 + Math.random() * (W - 60), y: H * 0.2 + Math.random() * (H * 0.75) });
         }
-        if (frame % 400 === 0 && crystalItems.length < 6) {
-          crystalItems.push({ x: 30 + Math.random() * (W - 60), y: H * 0.15 + Math.random() * (H * 0.8) });
+        if (frame % 400 === 0 && crystalItems.length < 5) {
+          crystalItems.push({ x: 30 + Math.random() * (W - 60), y: H * 0.2 + Math.random() * (H * 0.75) });
         }
 
         particles = particles.filter(function(p) {
@@ -605,62 +580,44 @@
       function draw() {
         ctx.clearRect(0, 0, W, H);
 
-        // Небо
-        var horizon = H * 0.5;
+        var horizon = H * 0.45;
         var sg = ctx.createLinearGradient(0, 0, 0, horizon);
         sg.addColorStop(0, '#87CEEB');
         sg.addColorStop(1, '#c8b896');
         ctx.fillStyle = sg;
         ctx.fillRect(0, 0, W, horizon);
         
-        // Солнце
         ctx.fillStyle = '#ffd700';
         ctx.beginPath();
-        ctx.arc(W * 0.85, horizon * 0.25, Math.min(W, H) * 0.05, 0, 6.28);
+        ctx.arc(W * 0.85, horizon * 0.3, Math.min(W, H) * 0.06, 0, 6.28);
         ctx.fill();
 
-        // Задние горы
         ctx.fillStyle = '#8b7d6b';
         ctx.beginPath();
         ctx.moveTo(0, horizon * 1.1);
         for (var i = 0; i <= W / 50 + 1; i++) {
-          ctx.lineTo(i * 55, horizon * 0.7 + Math.sin(i * 0.7) * (H * 0.1));
+          ctx.lineTo(i * 55, horizon * 0.75 + Math.sin(i * 0.7) * (H * 0.08));
         }
         ctx.lineTo(W, horizon * 1.1);
         ctx.fill();
 
-        // Передние горы / Земля
-        ctx.fillStyle = '#6b5d4b';
-        ctx.beginPath();
-        ctx.moveTo(0, horizon * 1.2);
-        for (var i = 0; i <= W / 40 + 1; i++) {
-          ctx.lineTo(i * 42, horizon * 0.85 + Math.sin(i * 0.5) * (H * 0.08));
-        }
-        ctx.lineTo(W, horizon * 1.2);
-        ctx.fill();
-
-        // Плоскость земли до низа экрана
         ctx.fillStyle = '#8b7b5a';
-        ctx.fillRect(0, horizon * 1.1, W, H - horizon * 1.1);
+        ctx.fillRect(0, horizon * 1.05, W, H - horizon * 1.05);
 
         for (var i = 0; i < toolItems.length; i++) {
           var t = toolItems[i];
-          ctx.fillStyle = 'rgba(255,215,0,0.3)';
-          ctx.beginPath(); ctx.arc(t.x, t.y, 16, 0, 6.28); ctx.fill();
-          ctx.fillStyle = '#ffd700';
-          ctx.beginPath(); ctx.arc(t.x, t.y, 12, 0, 6.28); ctx.fill();
-          ctx.fillStyle = '#8b6914';
-          ctx.font = '20px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillStyle = 'rgba(255,215,0,0.25)';
+          ctx.beginPath(); ctx.arc(t.x, t.y, 14, 0, 6.28); ctx.fill();
+          ctx.font = '18px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           ctx.fillText('⛏️', t.x, t.y);
         }
 
         for (var i = 0; i < crystalItems.length; i++) {
           var c = crystalItems[i];
-          var glow = Math.sin(frame * 0.06) * 0.4 + 0.6;
+          var glow = Math.sin(frame * 0.06) * 0.3 + 0.5;
           ctx.fillStyle = 'rgba(180,130,255,' + glow + ')';
-          ctx.beginPath(); ctx.arc(c.x, c.y, 14, 0, 6.28); ctx.fill();
-          ctx.fillStyle = '#fff';
-          ctx.font = '20px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.beginPath(); ctx.arc(c.x, c.y, 12, 0, 6.28); ctx.fill();
+          ctx.font = '18px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           ctx.fillText('🔮', c.x, c.y);
         }
 
@@ -670,14 +627,14 @@
           ctx.save();
           ctx.translate(d.x, d.y);
           if (!d.hidden || lantern) {
-            var alpha = Math.sin(frame * 0.04) * 0.3 + 0.4;
+            var alpha = Math.sin(frame * 0.04) * 0.25 + 0.35;
             ctx.fillStyle = 'rgba(255,140,0,' + alpha + ')';
-            ctx.beginPath(); ctx.arc(0, 0, 32, 0, 6.28); ctx.fill();
+            ctx.beginPath(); ctx.arc(0, 0, 28, 0, 6.28); ctx.fill();
           }
           ctx.fillStyle = '#9b8365';
-          ctx.beginPath(); ctx.ellipse(0, 0, 30, 25, 0, 0, 6.28); ctx.fill();
+          ctx.beginPath(); ctx.ellipse(0, 0, 26, 22, 0, 0, 6.28); ctx.fill();
           ctx.fillStyle = (d.hidden && !lantern) ? '#5a4a3a' : '#6b3a2a';
-          ctx.font = '28px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.font = '24px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           ctx.fillText((d.hidden && !lantern) ? '?' : d.sym, 0, 0);
           ctx.restore();
         }
@@ -686,20 +643,17 @@
           var g = ghosts[i];
           ctx.save();
           ctx.translate(g.x, g.y);
-          var fy = Math.sin(g.float) * 10;
+          var fy = Math.sin(g.float) * 8;
           ctx.globalAlpha = Math.min(1, g.life / 100);
           ctx.fillStyle = '#fff';
           ctx.beginPath();
-          ctx.arc(0, -6 + fy, 14, Math.PI, 0);
+          ctx.arc(0, -4 + fy, 12, Math.PI, 0);
           for (var w = 0; w < 4; w++) {
-            var wx = -14 + w * 7;
-            var wy = 8 + fy + (w % 2 === 0 ? 0 : 5);
-            ctx.lineTo(wx + 3.5, wy);
+            ctx.lineTo(-12 + w * 6 + 3, 6 + fy + (w % 2 === 0 ? 0 : 4));
           }
           ctx.fill();
           ctx.fillStyle = '#000';
-          ctx.fillRect(-6, -8 + fy, 3.5, 3.5);
-          ctx.fillRect(3, -8 + fy, 3.5, 3.5);
+          ctx.fillRect(-4, -6 + fy, 3, 3); ctx.fillRect(2, -6 + fy, 3, 3);
           ctx.restore();
         }
         ctx.globalAlpha = 1;
@@ -708,26 +662,25 @@
           ctx.save();
           ctx.translate(player.x, player.y);
           if (player.dir < 0) ctx.scale(-1, 1);
-          // Немного увеличим модельку игрока для экранов с большим разрешением
-          ctx.scale(1.3, 1.3);
+          ctx.scale(1.1, 1.1);
           
           ctx.fillStyle = '#4a3020';
-          ctx.fillRect(-5, 8, 4, 11); ctx.fillRect(1, 8, 4, 11);
+          ctx.fillRect(-4, 6, 3, 9); ctx.fillRect(1, 6, 3, 9);
           ctx.fillStyle = '#8b6914';
-          ctx.fillRect(-8, -5, 16, 17);
+          ctx.fillRect(-7, -4, 14, 14);
           ctx.fillStyle = '#d4a76a';
-          ctx.beginPath(); ctx.arc(0, -11, 8, 0, 6.28); ctx.fill();
+          ctx.beginPath(); ctx.arc(0, -9, 7, 0, 6.28); ctx.fill();
           ctx.fillStyle = '#5a3d2b';
-          ctx.fillRect(-9, -19, 18, 5); ctx.fillRect(-6, -24, 12, 7);
+          ctx.fillRect(-8, -16, 16, 4); ctx.fillRect(-5, -20, 10, 5);
           ctx.fillStyle = '#000';
-          ctx.beginPath(); ctx.arc(-3, -12, 1.5, 0, 6.28); ctx.arc(3, -12, 1.5, 0, 6.28); ctx.fill();
+          ctx.beginPath(); ctx.arc(-2, -10, 1.2, 0, 6.28); ctx.arc(2, -10, 1.2, 0, 6.28); ctx.fill();
           ctx.restore();
         }
 
         if (lantern) {
-          var rad = Math.min(W, H) * 0.35;
-          var grd = ctx.createRadialGradient(player.x, player.y, rad * 0.2, player.x, player.y, rad);
-          grd.addColorStop(0, 'rgba(255,255,200,0.35)');
+          var rad = Math.min(W, H) * 0.4;
+          var grd = ctx.createRadialGradient(player.x, player.y, rad * 0.15, player.x, player.y, rad);
+          grd.addColorStop(0, 'rgba(255,255,200,0.3)');
           grd.addColorStop(1, 'rgba(255,255,200,0)');
           ctx.fillStyle = grd;
           ctx.beginPath(); ctx.arc(player.x, player.y, rad, 0, 6.28); ctx.fill();
@@ -745,9 +698,9 @@
         lanternInd.style.display = 'none';
         overlay.style.display = 'flex';
         if (win) {
-          overlay.innerHTML = '<h1 style="color:#ffd700;">🎉 ПОБЕДА!</h1><p style="font-size:clamp(18px,5vw,32px);">Все рисунки найдены!</p><p style="font-size:clamp(16px,4vw,24px);">⭐ ' + score + ' | 🔮 ' + crystals + '</p><button id="restartBtn">🔄 ИГРАТЬ СНОВА</button>';
+          overlay.innerHTML = '<h1 style="color:#ffd700;">🎉 ПОБЕДА!</h1><p style="font-size:18px;">Все рисунки найдены!</p><p style="font-size:16px;">⭐ ' + score + ' | 🔮 ' + crystals + '</p><button id="restartBtn">🔄 ИГРАТЬ СНОВА</button>';
         } else {
-          overlay.innerHTML = '<h1 style="color:#ff4444;">👻 ДУХИ ОДОЛЕЛИ</h1><p style="font-size:clamp(16px,4vw,24px);">Найдено: ' + found + '/12 | ⭐ ' + score + '</p><button id="restartBtn">🔄 ПОПРОБОВАТЬ СНОВА</button>';
+          overlay.innerHTML = '<h1 style="color:#ff4444;">👻 ДУХИ ОДОЛЕЛИ</h1><p style="font-size:16px;">Найдено: ' + found + '/12 | ⭐ ' + score + '</p><button id="restartBtn">🔄 ПОПРОБОВАТЬ СНОВА</button>';
         }
         setTimeout(function() {
           var rb = document.getElementById('restartBtn');
@@ -765,7 +718,7 @@
         gameRunning = true; gameOver = false;
         score = 0; health = 5; tools = 3; crystals = 0; found = 0;
         lantern = false; energy = 100; hurt = 0; frame = 0;
-        player.x = W / 2; player.y = H * 0.8;
+        player.x = W / 2; player.y = H * 0.75;
         ghosts = []; particles = [];
         placeDrawings(); spawnTools(); spawnCrystals();
         overlay.style.display = 'none'; lanternInd.style.display = 'none';
@@ -775,11 +728,11 @@
       function restartGame() { startGame(); }
       startBtn.onclick = startGame;
       
-      // Инициализация при загрузке
-      placeDrawings(); spawnTools(); spawnCrystals(); gameLoop(); updateUI();
+      // Первичный запуск логов
+      setTimeout(function() {
+        resize(); placeDrawings(); spawnTools(); spawnCrystals(); gameLoop(); updateUI();
+      }, 150);
     })();
   </script>
 </body>
 </html>
-
-```
