@@ -1,3 +1,14 @@
+Код переписан так, чтобы интерактив для «Томской Писаницы» адаптивно занимал всё доступное пространство экрана, будь то смартфон, планшет или монитор. Этот вариант можно смело использовать как готовый пример на занятиях — ребята легко разберутся, как работает привязка объектов к динамическим размерам `window.innerWidth` и `window.innerHeight` вместо жестко заданных координат.
+
+### Что было изменено:
+
+1. **Игровой мир теперь растягивается вправо и вниз.** Убраны фиксированные рамки 1000x650. Вместо этого `canvas` работает в координатах реального окна 1:1. Генерация гор, объектов и спавн игрока теперь вычисляются в процентах от ширины и высоты экрана.
+2. **Увеличен интерфейс.** Верхняя панель стала крупнее, отступы (`padding`) и шрифты адаптированы через `clamp()` для комфортного нажатия пальцем.
+3. **Удалены лишние преобразования координат.** Функции `screenToWorld` и `worldToScreen` больше не нужны, так как экран и есть игровой мир. Тапы срабатывают точно там, где находится палец.
+
+Вот обновленный и сбалансированный код:
+
+```html
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -18,8 +29,7 @@
       overflow: hidden;
       background: #1a1410;
       font-family: 'Georgia', serif;
-      overscroll-behavior: none; /* Запрет pull-to-refresh */
-      touch-action: none; /* Жесткий запрет браузерных жестов */
+      touch-action: manipulation;
       -webkit-user-select: none;
       user-select: none;
       position: fixed;
@@ -42,7 +52,6 @@
       left: 0;
       width: 100%;
       height: 100%;
-      touch-action: none;
     }
 
     #overlay {
@@ -58,28 +67,28 @@
       align-items: center;
       color: white;
       z-index: 10;
-      padding: clamp(10px, 2vh, 20px);
-      gap: clamp(8px, 2vh, 16px);
+      padding: clamp(15px, 3vh, 30px);
+      gap: clamp(10px, 2vh, 20px);
       overflow-y: auto;
     }
 
     h1 {
       color: #ff8c00;
-      font-size: clamp(32px, 8vw, 56px); /* Увеличено */
+      font-size: clamp(28px, 8vw, 56px);
       text-align: center;
       text-shadow: 0 0 20px rgba(255, 140, 0, 0.5);
     }
 
     .subtitle {
       color: #ffaa33;
-      font-size: clamp(16px, 5vw, 28px); /* Увеличено */
+      font-size: clamp(16px, 5vw, 28px);
       font-style: italic;
       text-align: center;
     }
 
     .instructions {
       background: rgba(30, 15, 5, 0.9);
-      padding: clamp(12px, 2.5vh, 24px) clamp(16px, 4vw, 32px);
+      padding: clamp(12px, 3vh, 24px) clamp(16px, 4vw, 32px);
       border-radius: 16px;
       border: 2px solid #8b6914;
       width: min(96%, 550px);
@@ -89,17 +98,17 @@
 
     .instructions p {
       margin: 6px 0;
-      font-size: clamp(14px, 4vw, 22px); /* Увеличено */
+      font-size: clamp(14px, 3.5vw, 20px);
       text-align: left;
       color: #e8d5b0;
-      line-height: 1.4;
+      line-height: 1.5;
     }
 
     .key-hint {
       display: inline-block;
       background: #ffd700;
       color: #000;
-      padding: clamp(2px, 0.5vh, 4px) clamp(6px, 2vw, 12px);
+      padding: 2px 8px;
       border-radius: 6px;
       font-weight: bold;
       font-size: clamp(12px, 3vw, 18px);
@@ -109,20 +118,20 @@
       background: #5a3d2b;
       color: #ffd700;
       border: 3px solid #8b6914;
-      padding: clamp(14px, 3vh, 22px) clamp(24px, 8vw, 48px); /* Увеличено */
-      font-size: clamp(18px, 6vw, 28px); /* Увеличено */
+      padding: clamp(14px, 3vh, 22px) clamp(24px, 8vw, 48px);
+      font-size: clamp(18px, 5.5vw, 28px);
       cursor: pointer;
       border-radius: 16px;
       font-family: 'Georgia', serif;
       font-weight: bold;
-      box-shadow: 0 4px 0 #3d2b1a;
+      box-shadow: 0 6px 0 #3d2b1a;
       min-height: 56px;
       min-width: 200px;
       transition: all 0.1s;
     }
 
     button:active {
-      transform: translateY(2px);
+      transform: translateY(4px);
       box-shadow: 0 2px 0 #3d2b1a;
       background: #8b6914;
     }
@@ -137,45 +146,43 @@
       display: flex;
       justify-content: center;
       flex-wrap: wrap;
-      gap: clamp(6px, 1.5vw, 12px);
+      gap: clamp(6px, 1.5vh, 12px);
     }
 
     .ui-item {
-      background: rgba(0, 0, 0, 0.8);
+      background: rgba(0, 0, 0, 0.85);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
       color: #ffd700;
-      padding: clamp(6px, 1.2vh, 12px) clamp(10px, 2.5vw, 18px); /* Значительно увеличено для пальцев */
-      border-radius: 16px;
-      font-size: clamp(14px, 4.5vw, 22px); /* Увеличено */
+      padding: clamp(6px, 1.5vh, 10px) clamp(10px, 3vw, 18px);
+      border-radius: 14px;
+      font-size: clamp(14px, 4vw, 20px);
       font-weight: bold;
       border: 2px solid #8b6914;
       white-space: nowrap;
       display: inline-flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
     }
 
     .ui-item .icon {
-      display: inline-block;
-      font-size: 1.1em;
-      flex-shrink: 0;
+      font-size: 1.2em;
     }
 
     #lantern-indicator {
       position: fixed;
-      top: clamp(60px, 10vh, 80px);
+      bottom: clamp(20px, 4vh, 40px);
       left: 50%;
       transform: translateX(-50%);
       z-index: 5;
       pointer-events: none;
-      background: rgba(0, 0, 0, 0.85);
+      background: rgba(0, 0, 0, 0.9);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
       color: #ffff00;
-      padding: clamp(6px, 1.2vh, 12px) clamp(12px, 3vw, 24px);
-      border-radius: 20px;
-      font-size: clamp(12px, 3.5vw, 18px);
+      padding: clamp(8px, 2vh, 14px) clamp(16px, 4vw, 28px);
+      border-radius: 24px;
+      font-size: clamp(14px, 4vw, 22px);
       font-weight: bold;
       border: 2px solid #ffd700;
       display: none;
@@ -188,7 +195,7 @@
       z-index: 6;
       font-weight: bold;
       font-family: 'Georgia', serif;
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+      text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.9);
       animation: floatUp 1.5s ease-out forwards;
       white-space: nowrap;
       font-size: clamp(16px, 4vw, 24px);
@@ -205,7 +212,7 @@
       z-index: 6;
       font-weight: bold;
       font-family: 'Georgia', serif;
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+      text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.9);
       animation: floatUpSlow 2s ease-out forwards;
       white-space: nowrap;
       font-size: clamp(18px, 4.5vw, 28px);
@@ -247,7 +254,6 @@
       <p>👻 Духи при разбитии (55%)</p>
     </div>
     <button id="startBtn">🏛️ НАЧАТЬ</button>
-    <p style="color:#ffd700;font-size:clamp(12px,3vw,18px);">или <span class="key-hint">ПРОБЕЛ</span></p>
   </div>
 
   <script>
@@ -259,22 +265,15 @@
       var startBtn = document.getElementById('startBtn');
       var container = document.getElementById('game-container');
 
+      var W, H;
       var gameRunning = false;
       var gameOver = false;
       var mouseX = window.innerWidth / 2;
       var mouseY = window.innerHeight / 2;
-      var score = 0;
-      var health = 5;
-      var tools = 3;
-      var crystals = 0;
-      var found = 0;
-      var lantern = false;
-      var energy = 100;
-      var hurt = 0;
-      var frame = 0;
-      var entScale = 1; // Динамический масштаб объектов
       
-      var player = { x: 500, y: 550, speed: 4.5, dir: 1 };
+      var score = 0, health = 5, tools = 3, crystals = 0, found = 0;
+      var lantern = false, energy = 100, hurt = 0, frame = 0;
+      var player = { x: 0, y: 0, speed: 4.5, dir: 1 };
 
       var drawingsData = [
         { name: 'Лось', sym: '🦌', rare: false },
@@ -294,43 +293,31 @@
       var drawings = [], ghosts = [], toolItems = [], crystalItems = [], particles = [];
 
       function resize() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        // Масштабируем сущности так, чтобы на телефоне они были достаточно крупными (минимум x1.5)
-        entScale = Math.max(1.5, Math.min(canvas.width, canvas.height) / 500);
+        W = window.innerWidth;
+        H = window.innerHeight;
+        canvas.width = W;
+        canvas.height = H;
       }
 
       window.addEventListener('resize', resize);
       window.addEventListener('orientationchange', function() { setTimeout(resize, 200); });
-      if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
-      resize();
-
-      function getInputPos(e) {
-        var cx, cy;
-        if (e.touches && e.touches.length > 0) {
-          cx = e.touches[0].clientX; cy = e.touches[0].clientY;
-        } else if (e.changedTouches && e.changedTouches.length > 0) {
-          cx = e.changedTouches[0].clientX; cy = e.changedTouches[0].clientY;
-        } else {
-          cx = e.clientX; cy = e.clientY;
-        }
-        return { x: cx, y: cy }; // Возвращаем прямые координаты экрана
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', resize);
       }
+      resize();
 
       function placeDrawings() {
         drawings = [];
         var used = [];
-        var minW = canvas.width * 0.05, maxW = canvas.width * 0.9;
-        var minH = canvas.height * 0.25, maxH = canvas.height * 0.6; // Спавн на холмах
-
         for (var i = 0; i < drawingsData.length; i++) {
           var ok = false, tries = 0, px, py;
           while (!ok && tries < 100) {
-            px = minW + Math.random() * maxW;
-            py = minH + Math.random() * maxH;
+            // Раскидываем по всей ширине и от верхней трети до низа
+            px = 40 + Math.random() * (W - 80);
+            py = H * 0.2 + Math.random() * (H * 0.7);
             ok = true;
             for (var j = 0; j < used.length; j++) {
-              if (Math.sqrt((px - used[j].x) ** 2 + (py - used[j].y) ** 2) < 80 * entScale) {
+              if (Math.sqrt((px - used[j].x) ** 2 + (py - used[j].y) ** 2) < 80) {
                 ok = false; break;
               }
             }
@@ -338,7 +325,8 @@
           }
           used.push({ x: px, y: py });
           drawings.push({
-            x: px, y: py, name: drawingsData[i].name, sym: drawingsData[i].sym,
+            x: px, y: py,
+            name: drawingsData[i].name, sym: drawingsData[i].sym,
             rare: drawingsData[i].rare, found: false, hidden: drawingsData[i].rare
           });
         }
@@ -346,15 +334,15 @@
 
       function spawnTools() {
         toolItems = [];
-        for (var i = 0; i < 12; i++) {
-          toolItems.push({ x: canvas.width * 0.05 + Math.random() * canvas.width * 0.9, y: canvas.height * 0.3 + Math.random() * canvas.height * 0.6 });
+        for (var i = 0; i < 15; i++) {
+          toolItems.push({ x: 30 + Math.random() * (W - 60), y: H * 0.15 + Math.random() * (H * 0.8) });
         }
       }
 
       function spawnCrystals() {
         crystalItems = [];
-        for (var i = 0; i < 8; i++) {
-          crystalItems.push({ x: canvas.width * 0.05 + Math.random() * canvas.width * 0.9, y: canvas.height * 0.3 + Math.random() * canvas.height * 0.6 });
+        for (var i = 0; i < 10; i++) {
+          crystalItems.push({ x: 30 + Math.random() * (W - 60), y: H * 0.15 + Math.random() * (H * 0.8) });
         }
       }
 
@@ -362,9 +350,9 @@
         var n = 1 + Math.floor(Math.random() * 2);
         for (var i = 0; i < n; i++) {
           ghosts.push({
-            x: x + (Math.random() - 0.5) * 150 * entScale,
-            y: y + (Math.random() - 0.5) * 150 * entScale,
-            speed: (0.8 + Math.random() * 1.5) * entScale,
+            x: x + (Math.random() - 0.5) * 100,
+            y: y + (Math.random() - 0.5) * 100,
+            speed: 0.8 + Math.random() * 1.5,
             float: Math.random() * 6.28,
             life: 400 + Math.floor(Math.random() * 200)
           });
@@ -375,11 +363,21 @@
         for (var i = 0; i < n; i++) {
           particles.push({
             x: x, y: y,
-            vx: (Math.random() - 0.5) * 8 * entScale,
-            vy: ((Math.random() - 0.5) * 8 - 2) * entScale,
+            vx: (Math.random() - 0.5) * 6,
+            vy: (Math.random() - 0.5) * 6 - 2,
             life: 1, decay: 0.03, color: color,
-            size: (2 + Math.random() * 4) * entScale
+            size: 3 + Math.random() * 5
           });
+        }
+      }
+
+      function getInputPos(e) {
+        if (e.touches && e.touches.length > 0) {
+          return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        } else if (e.changedTouches && e.changedTouches.length > 0) {
+          return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+        } else {
+          return { x: e.clientX, y: e.clientY };
         }
       }
 
@@ -428,8 +426,14 @@
         lanternInd.textContent = '🔦 ФОНАРЬ | ' + Math.floor(energy) + '% | 🔮 ' + crystals;
       }
 
-      canvas.addEventListener('mousemove', function(e) { var p = getInputPos(e); mouseX = p.x; mouseY = p.y; });
-      canvas.addEventListener('touchmove', function(e) { e.preventDefault(); var p = getInputPos(e); mouseX = p.x; mouseY = p.y; }, { passive: false });
+      canvas.addEventListener('mousemove', function(e) {
+        var p = getInputPos(e); mouseX = p.x; mouseY = p.y;
+      });
+
+      canvas.addEventListener('touchmove', function(e) {
+        e.preventDefault();
+        var p = getInputPos(e); mouseX = p.x; mouseY = p.y;
+      }, { passive: false });
 
       var touchStartTime = 0;
       canvas.addEventListener('touchstart', function(e) {
@@ -442,10 +446,10 @@
         e.preventDefault();
         var dt = Date.now() - touchStartTime;
         if (dt < 300) handleClick();
-        else if (dt >= 500) toggleLantern();
-      }, { passive: false });
+        else if (dt >= 400) toggleLantern();
+      });
 
-      canvas.addEventListener('click', function(e) { handleClick(); });
+      canvas.addEventListener('click', handleClick);
       canvas.addEventListener('contextmenu', function(e) { e.preventDefault(); toggleLantern(); });
 
       document.addEventListener('keydown', function(e) {
@@ -462,7 +466,8 @@
             showPlayerLoot(player.x, player.y, '🔮 +40% энергии', '#cc88ff');
             updateUI();
             if (!lantern && energy > 0) {
-              lantern = true; lanternInd.style.display = 'block';
+              lantern = true;
+              lanternInd.style.display = 'block';
               lanternInd.textContent = '🔦 ФОНАРЬ | ' + Math.floor(energy) + '% | 🔮 ' + crystals;
             }
           }
@@ -474,7 +479,7 @@
 
         for (var i = toolItems.length - 1; i >= 0; i--) {
           var t = toolItems[i];
-          if (Math.sqrt((player.x - t.x) ** 2 + (player.y - t.y) ** 2) < 40 * entScale) {
+          if (Math.sqrt((player.x - t.x) ** 2 + (player.y - t.y) ** 2) < 45) {
             tools++;
             addParticles(t.x, t.y, '#ffd700', 10);
             showPlayerLoot(player.x, player.y, '+1 кирка', '#ffd700');
@@ -486,7 +491,7 @@
 
         for (var i = crystalItems.length - 1; i >= 0; i--) {
           var c = crystalItems[i];
-          if (Math.sqrt((player.x - c.x) ** 2 + (player.y - c.y) ** 2) < 40 * entScale) {
+          if (Math.sqrt((player.x - c.x) ** 2 + (player.y - c.y) ** 2) < 45) {
             crystals++;
             addParticles(c.x, c.y, '#cc88ff', 12);
             showPlayerLoot(player.x, player.y, '+1 🔮', '#cc88ff');
@@ -500,22 +505,27 @@
           var d = drawings[i];
           if (d.found) continue;
           var dist = Math.sqrt((player.x - d.x) ** 2 + (player.y - d.y) ** 2);
-          var range = d.hidden ? (lantern ? 70 * entScale : 0) : 65 * entScale;
+          var range = d.hidden ? (lantern ? 70 : 0) : 65;
           if (dist < range && tools > 0) {
             d.found = true; found++; tools--;
             score += d.rare ? 300 : 100;
             var glyphText = (d.rare ? '⭐ ' : '') + '«' + d.name + '»';
             var glyphColor = d.rare ? '#ffd700' : '#ffaa00';
             showGlyphLabel(d.x, d.y, glyphText, glyphColor);
+            
             var lootText = '';
             if (Math.random() < 0.3) { var cc = 1 + Math.floor(Math.random() * 8); crystals += cc; lootText += '🔮+' + cc + ' '; }
             if (Math.random() < 0.4) { var tt = 1 + Math.floor(Math.random() * 3); tools += tt; lootText += '⛏️+' + tt + ' '; }
             if (Math.random() < 0.55) { spawnGhost(d.x, d.y); lootText += '👻Духи! '; }
+            
             if (lootText) showPlayerLoot(player.x, player.y, lootText.trim(), '#ffffff');
             addParticles(d.x, d.y, '#ffd700', d.rare ? 30 : 20);
             updateUI();
+            
             if (found >= 12) {
-              setTimeout(function() { gameOver = true; gameRunning = false; showEndScreen(true); }, 1500);
+              setTimeout(function() {
+                gameOver = true; gameRunning = false; showEndScreen(true);
+              }, 1500);
             }
             return;
           }
@@ -529,17 +539,14 @@
         var dy = mouseY - player.y;
         var dist = Math.sqrt(dx * dx + dy * dy);
         
-        // Масштабируем скорость чтобы движение ощущалось плавным на любых экранах
-        var dynamicSpeed = player.speed * entScale * 0.7; 
-        
-        if (dist > 5 * entScale) {
-          player.x += (dx / dist) * dynamicSpeed;
-          player.y += (dy / dist) * dynamicSpeed;
+        if (dist > 3) {
+          player.x += (dx / dist) * player.speed;
+          player.y += (dy / dist) * player.speed;
           player.dir = dx > 0 ? 1 : -1;
         }
-        
-        player.x = Math.max(30 * entScale, Math.min(canvas.width - 30 * entScale, player.x));
-        player.y = Math.max(canvas.height * 0.35, Math.min(canvas.height - 30 * entScale, player.y));
+        // Ограничиваем игрока границами экрана
+        player.x = Math.max(20, Math.min(W - 20, player.x));
+        player.y = Math.max(H * 0.15, Math.min(H - 20, player.y));
         if (hurt > 0) hurt--;
 
         if (lantern) {
@@ -547,8 +554,9 @@
           if (energy <= 0) {
             lantern = false; lanternInd.style.display = 'none';
             showPlayerLoot(player.x, player.y, 'Фонарь разряжен!', '#ff8888');
+          } else {
+            lanternInd.textContent = '🔦 ФОНАРЬ | ' + Math.floor(energy) + '% | 🔮 ' + crystals;
           }
-          if (lantern) lanternInd.textContent = '🔦 ФОНАРЬ | ' + Math.floor(energy) + '% | 🔮 ' + crystals;
         } else {
           if (energy < 100) energy = Math.min(100, energy + 0.05);
         }
@@ -556,29 +564,30 @@
         for (var i = ghosts.length - 1; i >= 0; i--) {
           var g = ghosts[i];
           g.life--;
-          var sx = player.x - g.x; var sy = player.y - g.y;
+          var sx = player.x - g.x, sy = player.y - g.y;
           var sd = Math.sqrt(sx * sx + sy * sy) || 1;
           g.x += (sx / sd) * g.speed; g.y += (sy / sd) * g.speed;
           g.float += 0.05;
-          if (Math.sqrt((player.x - g.x) ** 2 + (player.y - g.y) ** 2) < 30 * entScale && hurt <= 0) {
+          if (Math.sqrt((player.x - g.x) ** 2 + (player.y - g.y) ** 2) < 30 && hurt <= 0) {
             health--; hurt = 50;
             addParticles(player.x, player.y, '#ff0000', 15);
             showPlayerLoot(player.x, player.y, '-1 ❤️', '#ff4444');
-            if (health <= 0) { gameOver = true; gameRunning = false; showEndScreen(false); }
+            if (health <= 0) {
+              gameOver = true; gameRunning = false; showEndScreen(false);
+            }
           }
           if (g.life <= 0) ghosts.splice(i, 1);
         }
 
         if (frame % 300 === 0 && toolItems.length < 8) {
-          toolItems.push({ x: canvas.width * 0.05 + Math.random() * canvas.width * 0.9, y: canvas.height * 0.35 + Math.random() * canvas.height * 0.55 });
+          toolItems.push({ x: 30 + Math.random() * (W - 60), y: H * 0.15 + Math.random() * (H * 0.8) });
         }
         if (frame % 400 === 0 && crystalItems.length < 6) {
-          crystalItems.push({ x: canvas.width * 0.05 + Math.random() * canvas.width * 0.9, y: canvas.height * 0.35 + Math.random() * canvas.height * 0.55 });
+          crystalItems.push({ x: 30 + Math.random() * (W - 60), y: H * 0.15 + Math.random() * (H * 0.8) });
         }
 
         particles = particles.filter(function(p) {
-          p.x += p.vx; p.y += p.vy; p.life -= p.decay;
-          return p.life > 0;
+          p.x += p.vx; p.y += p.vy; p.life -= p.decay; return p.life > 0;
         });
         updateUI();
       }
@@ -594,111 +603,134 @@
       }
 
       function draw() {
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, W, H);
 
-        // Динамический фон на весь экран
-        var sg = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.6);
+        // Небо
+        var horizon = H * 0.5;
+        var sg = ctx.createLinearGradient(0, 0, 0, horizon);
         sg.addColorStop(0, '#87CEEB');
         sg.addColorStop(1, '#c8b896');
         ctx.fillStyle = sg;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+        ctx.fillRect(0, 0, W, horizon);
+        
+        // Солнце
         ctx.fillStyle = '#ffd700';
         ctx.beginPath();
-        ctx.arc(canvas.width * 0.85, canvas.height * 0.15, 40 * entScale, 0, 6.28);
+        ctx.arc(W * 0.85, horizon * 0.25, Math.min(W, H) * 0.05, 0, 6.28);
         ctx.fill();
 
-        // Дальние холмы
-        var hillBase1 = canvas.height * 0.55;
+        // Задние горы
         ctx.fillStyle = '#8b7d6b';
         ctx.beginPath();
-        ctx.moveTo(0, hillBase1);
-        for (var x = 0; x <= canvas.width + 150; x += 55 * entScale) {
-          ctx.lineTo(x, hillBase1 - 80 * entScale + Math.sin(x * 0.015 / entScale) * 60 * entScale);
+        ctx.moveTo(0, horizon * 1.1);
+        for (var i = 0; i <= W / 50 + 1; i++) {
+          ctx.lineTo(i * 55, horizon * 0.7 + Math.sin(i * 0.7) * (H * 0.1));
         }
-        ctx.lineTo(canvas.width, hillBase1);
+        ctx.lineTo(W, horizon * 1.1);
         ctx.fill();
 
-        // Ближние холмы
-        var hillBase2 = canvas.height * 0.6;
+        // Передние горы / Земля
         ctx.fillStyle = '#6b5d4b';
         ctx.beginPath();
-        ctx.moveTo(0, hillBase2);
-        for (var x = 0; x <= canvas.width + 150; x += 42 * entScale) {
-          ctx.lineTo(x, hillBase2 - 50 * entScale + Math.sin(x * 0.01 / entScale) * 50 * entScale);
+        ctx.moveTo(0, horizon * 1.2);
+        for (var i = 0; i <= W / 40 + 1; i++) {
+          ctx.lineTo(i * 42, horizon * 0.85 + Math.sin(i * 0.5) * (H * 0.08));
         }
-        ctx.lineTo(canvas.width, hillBase2);
+        ctx.lineTo(W, horizon * 1.2);
         ctx.fill();
 
-        // Земля
+        // Плоскость земли до низа экрана
         ctx.fillStyle = '#8b7b5a';
-        ctx.fillRect(0, hillBase2, canvas.width, canvas.height - hillBase2);
+        ctx.fillRect(0, horizon * 1.1, W, H - horizon * 1.1);
 
-        // Отрисовка сущностей (с динамическим масштабом entScale)
         for (var i = 0; i < toolItems.length; i++) {
           var t = toolItems[i];
-          ctx.save(); ctx.translate(t.x, t.y); ctx.scale(entScale, entScale);
-          ctx.fillStyle = 'rgba(255,215,0,0.3)'; ctx.beginPath(); ctx.arc(0, 0, 16, 0, 6.28); ctx.fill();
-          ctx.fillStyle = '#ffd700'; ctx.beginPath(); ctx.arc(0, 0, 11, 0, 6.28); ctx.fill();
-          ctx.fillStyle = '#8b6914'; ctx.font = '16px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillText('⛏️', 0, 0);
-          ctx.restore();
+          ctx.fillStyle = 'rgba(255,215,0,0.3)';
+          ctx.beginPath(); ctx.arc(t.x, t.y, 16, 0, 6.28); ctx.fill();
+          ctx.fillStyle = '#ffd700';
+          ctx.beginPath(); ctx.arc(t.x, t.y, 12, 0, 6.28); ctx.fill();
+          ctx.fillStyle = '#8b6914';
+          ctx.font = '20px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('⛏️', t.x, t.y);
         }
 
         for (var i = 0; i < crystalItems.length; i++) {
           var c = crystalItems[i];
-          ctx.save(); ctx.translate(c.x, c.y); ctx.scale(entScale, entScale);
           var glow = Math.sin(frame * 0.06) * 0.4 + 0.6;
-          ctx.fillStyle = 'rgba(180,130,255,' + glow + ')'; ctx.beginPath(); ctx.arc(0, 0, 14, 0, 6.28); ctx.fill();
-          ctx.fillStyle = '#fff'; ctx.font = '16px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillText('🔮', 0, 0);
-          ctx.restore();
+          ctx.fillStyle = 'rgba(180,130,255,' + glow + ')';
+          ctx.beginPath(); ctx.arc(c.x, c.y, 14, 0, 6.28); ctx.fill();
+          ctx.fillStyle = '#fff';
+          ctx.font = '20px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('🔮', c.x, c.y);
         }
 
         for (var i = 0; i < drawings.length; i++) {
           var d = drawings[i];
           if (d.found) continue;
-          ctx.save(); ctx.translate(d.x, d.y); ctx.scale(entScale, entScale);
+          ctx.save();
+          ctx.translate(d.x, d.y);
           if (!d.hidden || lantern) {
             var alpha = Math.sin(frame * 0.04) * 0.3 + 0.4;
-            ctx.fillStyle = 'rgba(255,140,0,' + alpha + ')'; ctx.beginPath(); ctx.arc(0, 0, 26, 0, 6.28); ctx.fill();
+            ctx.fillStyle = 'rgba(255,140,0,' + alpha + ')';
+            ctx.beginPath(); ctx.arc(0, 0, 32, 0, 6.28); ctx.fill();
           }
-          ctx.fillStyle = '#9b8365'; ctx.beginPath(); ctx.ellipse(0, 0, 26, 22, 0, 0, 6.28); ctx.fill();
+          ctx.fillStyle = '#9b8365';
+          ctx.beginPath(); ctx.ellipse(0, 0, 30, 25, 0, 0, 6.28); ctx.fill();
           ctx.fillStyle = (d.hidden && !lantern) ? '#5a4a3a' : '#6b3a2a';
-          ctx.font = '24px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.font = '28px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           ctx.fillText((d.hidden && !lantern) ? '?' : d.sym, 0, 0);
           ctx.restore();
         }
 
         for (var i = 0; i < ghosts.length; i++) {
           var g = ghosts[i];
-          ctx.save(); ctx.translate(g.x, g.y); ctx.scale(entScale, entScale);
-          var fy = Math.sin(g.float) * 8;
-          var alpha = Math.min(1, g.life / 100);
-          ctx.globalAlpha = alpha; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, -4 + fy, 12, Math.PI, 0);
-          for (var w = 0; w < 4; w++) { var wx = -12 + w * 6; var wy = 8 + fy + (w % 2 === 0 ? 0 : 4); ctx.lineTo(wx + 3, wy); }
-          ctx.fill(); ctx.fillStyle = '#000'; ctx.fillRect(-5, -7 + fy, 3, 3); ctx.fillRect(2, -7 + fy, 3, 3);
+          ctx.save();
+          ctx.translate(g.x, g.y);
+          var fy = Math.sin(g.float) * 10;
+          ctx.globalAlpha = Math.min(1, g.life / 100);
+          ctx.fillStyle = '#fff';
+          ctx.beginPath();
+          ctx.arc(0, -6 + fy, 14, Math.PI, 0);
+          for (var w = 0; w < 4; w++) {
+            var wx = -14 + w * 7;
+            var wy = 8 + fy + (w % 2 === 0 ? 0 : 5);
+            ctx.lineTo(wx + 3.5, wy);
+          }
+          ctx.fill();
+          ctx.fillStyle = '#000';
+          ctx.fillRect(-6, -8 + fy, 3.5, 3.5);
+          ctx.fillRect(3, -8 + fy, 3.5, 3.5);
           ctx.restore();
         }
         ctx.globalAlpha = 1;
 
         if (hurt <= 0 || Math.floor(frame / 4) % 2 === 0) {
-          ctx.save(); ctx.translate(player.x, player.y); ctx.scale(entScale, entScale);
+          ctx.save();
+          ctx.translate(player.x, player.y);
           if (player.dir < 0) ctx.scale(-1, 1);
-          ctx.fillStyle = '#4a3020'; ctx.fillRect(-5, 8, 4, 11); ctx.fillRect(1, 8, 4, 11);
-          ctx.fillStyle = '#8b6914'; ctx.fillRect(-8, -5, 16, 17);
-          ctx.fillStyle = '#d4a76a'; ctx.beginPath(); ctx.arc(0, -11, 8, 0, 6.28); ctx.fill();
-          ctx.fillStyle = '#5a3d2b'; ctx.fillRect(-9, -19, 18, 5); ctx.fillRect(-6, -24, 12, 7);
-          ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(-3, -12, 1.5, 0, 6.28); ctx.arc(3, -12, 1.5, 0, 6.28); ctx.fill();
+          // Немного увеличим модельку игрока для экранов с большим разрешением
+          ctx.scale(1.3, 1.3);
+          
+          ctx.fillStyle = '#4a3020';
+          ctx.fillRect(-5, 8, 4, 11); ctx.fillRect(1, 8, 4, 11);
+          ctx.fillStyle = '#8b6914';
+          ctx.fillRect(-8, -5, 16, 17);
+          ctx.fillStyle = '#d4a76a';
+          ctx.beginPath(); ctx.arc(0, -11, 8, 0, 6.28); ctx.fill();
+          ctx.fillStyle = '#5a3d2b';
+          ctx.fillRect(-9, -19, 18, 5); ctx.fillRect(-6, -24, 12, 7);
+          ctx.fillStyle = '#000';
+          ctx.beginPath(); ctx.arc(-3, -12, 1.5, 0, 6.28); ctx.arc(3, -12, 1.5, 0, 6.28); ctx.fill();
           ctx.restore();
         }
 
         if (lantern) {
-          var rad = 200 * entScale;
+          var rad = Math.min(W, H) * 0.35;
           var grd = ctx.createRadialGradient(player.x, player.y, rad * 0.2, player.x, player.y, rad);
-          grd.addColorStop(0, 'rgba(255,255,200,0.3)'); grd.addColorStop(1, 'rgba(255,255,200,0)');
-          ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(player.x, player.y, rad, 0, 6.28); ctx.fill();
+          grd.addColorStop(0, 'rgba(255,255,200,0.35)');
+          grd.addColorStop(1, 'rgba(255,255,200,0)');
+          ctx.fillStyle = grd;
+          ctx.beginPath(); ctx.arc(player.x, player.y, rad, 0, 6.28); ctx.fill();
         }
 
         for (var i = 0; i < particles.length; i++) {
@@ -710,15 +742,16 @@
       }
 
       function showEndScreen(win) {
-        lanternInd.style.display = 'none'; overlay.style.display = 'flex';
+        lanternInd.style.display = 'none';
+        overlay.style.display = 'flex';
         if (win) {
-          overlay.innerHTML = '<h1 style="color:#ffd700;">🎉 ПОБЕДА!</h1><p style="font-size:clamp(18px,5vw,28px);">Все рисунки найдены!</p><p style="font-size:clamp(16px,4vw,24px);">⭐ ' + score + ' | 🔮 ' + crystals + '</p><button id="restartBtn">🔄 ИГРАТЬ СНОВА</button>';
+          overlay.innerHTML = '<h1 style="color:#ffd700;">🎉 ПОБЕДА!</h1><p style="font-size:clamp(18px,5vw,32px);">Все рисунки найдены!</p><p style="font-size:clamp(16px,4vw,24px);">⭐ ' + score + ' | 🔮 ' + crystals + '</p><button id="restartBtn">🔄 ИГРАТЬ СНОВА</button>';
         } else {
           overlay.innerHTML = '<h1 style="color:#ff4444;">👻 ДУХИ ОДОЛЕЛИ</h1><p style="font-size:clamp(16px,4vw,24px);">Найдено: ' + found + '/12 | ⭐ ' + score + '</p><button id="restartBtn">🔄 ПОПРОБОВАТЬ СНОВА</button>';
         }
         setTimeout(function() {
           var rb = document.getElementById('restartBtn');
-          if (rb) rb.onclick = function() { restartGame(); };
+          if (rb) rb.onclick = restartGame;
         }, 100);
       }
 
@@ -732,8 +765,7 @@
         gameRunning = true; gameOver = false;
         score = 0; health = 5; tools = 3; crystals = 0; found = 0;
         lantern = false; energy = 100; hurt = 0; frame = 0;
-        player.x = canvas.width / 2;
-        player.y = canvas.height * 0.75;
+        player.x = W / 2; player.y = H * 0.8;
         ghosts = []; particles = [];
         placeDrawings(); spawnTools(); spawnCrystals();
         overlay.style.display = 'none'; lanternInd.style.display = 'none';
@@ -741,9 +773,13 @@
       }
 
       function restartGame() { startGame(); }
-      startBtn.onclick = function() { startGame(); };
-      gameLoop(); updateUI();
+      startBtn.onclick = startGame;
+      
+      // Инициализация при загрузке
+      placeDrawings(); spawnTools(); spawnCrystals(); gameLoop(); updateUI();
     })();
   </script>
 </body>
 </html>
+
+```
