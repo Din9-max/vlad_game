@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Томская Писаница</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #1a1410;
+      font-family: 'Georgia', serif;
+      touch-action: manipulation;
+      -webkit-user-select: none;
+      user-select: none;
+      position: fixed;
+    }
+
+    #game-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #87CEEB;
+      z-index: 1;
+    }
+
+    canvas {
+      display: block;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    #overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.92);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      z-index: 10;
+      padding: clamp(10px, 2vh, 20px);
+      gap: clamp(6px, 1.5vh, 12px);
+      overflow-y: auto;
+    }
+
+    h1 {
+      color: #ff8c00;
+      font-size: clamp(22px, 8vw, 48px);
+      text-align: center;
+      text-shadow: 0 0 20px rgba(255, 140, 0, 0.5);
+    }
+
+    .subtitle {
+      color: #ffaa33;
+      font-size: clamp(12px, 4.5vw, 24px);
+      font-style: italic;
+      text-align: center;
+    }
+
+    .instructions {
+      background: rgba(30, 15, 5, 0.9);
+      padding: clamp(8px, 2vh, 18px) clamp(10px, 3vw, 24px);
+      border-radius: 14px;
+      border: 2px solid #8b6914;
+      width: min(96%, 500px);
+      max-height: 45vh;
+      overflow-y: auto;
+    }
+
+    .instructions p {
+      margin: 3px 0;
+      font-size: clamp(10px, 2.5vw, 16px);
+      text-align: left;
+      color: #e8d5b0;
+      line-height: 1.4;
+    }
+
+    .key-hint {
+      display: inline-block;
+      background: #ffd700;
+      color: #000;
+      padding: clamp(1px, 0.3vh, 3px) clamp(4px, 1.5vw, 10px);
+      border-radius: 4px;
+      font-weight: bold;
+      font-size: clamp(9px, 2.2vw, 14px);
+    }
+
+    button {
+      background: #5a3d2b;
+      color: #ffd700;
+      border: 3px solid #8b6914;
+      padding: clamp(10px, 2.5vh, 18px) clamp(16px, 6vw, 36px);
+      font-size: clamp(14px, 4.5vw, 22px);
+      cursor: pointer;
+      border-radius: 12px;
+      font-family: 'Georgia', serif;
+      font-weight: bold;
+      box-shadow: 0 4px 0 #3d2b1a;
+      min-height: 44px;
+      min-width: 160px;
+      transition: all 0.1s;
+    }
+
+    button:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 #3d2b1a;
+      background: #8b6914;
+    }
+
+    #ui-bar {
+      position: fixed;
+      top: clamp(4px, 1vh, 8px);
+      left: clamp(4px, 1vw, 8px);
+      right: clamp(4px, 1vw, 8px);
+      z-index: 5;
+      pointer-events: none;
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: clamp(2px, 0.5vh, 5px);
+    }
+
+    .ui-item {
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: #ffd700;
+      padding: clamp(2px, 0.5vh, 5px) clamp(4px, 1.5vw, 12px);
+      border-radius: 12px;
+      font-size: clamp(8px, 2vw, 14px);
+      font-weight: bold;
+      border: 1.5px solid #8b6914;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .ui-item .icon {
+      display: inline-block;
+      width: 1em;
+      height: 1em;
+      flex-shrink: 0;
+    }
+
+    #lantern-indicator {
+      position: fixed;
+      top: clamp(36px, 6vh, 48px);
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 5;
+      pointer-events: none;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: #ffff00;
+      padding: clamp(2px, 0.5vh, 6px) clamp(6px, 2vw, 16px);
+      border-radius: 16px;
+      font-size: clamp(8px, 2vw, 14px);
+      font-weight: bold;
+      border: 2px solid #ffd700;
+      display: none;
+      white-space: nowrap;
+    }
+
+    .player-loot {
+      position: fixed;
+      pointer-events: none;
+      z-index: 6;
+      font-weight: bold;
+      font-family: 'Georgia', serif;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+      animation: floatUp 1.5s ease-out forwards;
+      white-space: nowrap;
+      font-size: clamp(10px, 2.5vw, 18px);
+    }
+
+    @keyframes floatUp {
+      0% { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0; transform: translateY(-60px); }
+    }
+
+    .glyph-label {
+      position: fixed;
+      pointer-events: none;
+      z-index: 6;
+      font-weight: bold;
+      font-family: 'Georgia', serif;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+      animation: floatUpSlow 2s ease-out forwards;
+      white-space: nowrap;
+      font-size: clamp(12px, 3vw, 22px);
+    }
+
+    @keyframes floatUpSlow {
+      0% { opacity: 1; transform: translateY(0) scale(1); }
+      50% { opacity: 1; transform: translateY(-30px) scale(1.2); }
+      100% { opacity: 0; transform: translateY(-70px) scale(0.8); }
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+  </div>
+
+  <div id="ui-bar">
+    <span class="ui-item"><span class="icon">🗿</span> <span id="fd">0</span>/12</span>
+    <span class="ui-item"><span class="icon">❤️</span> <span id="hd">5</span></span>
+    <span class="ui-item"><span class="icon">⛏️</span> <span id="td">3</span></span>
+    <span class="ui-item"><span class="icon">🔮</span> <span id="cd">0</span></span>
+    <span class="ui-item"><span class="icon">⭐</span> <span id="sd">0</span></span>
+    <span class="ui-item"><span class="icon">👻</span> <span id="gd">0</span></span>
+    <span class="ui-item"><span class="icon">🔦</span> <span id="ed">100</span>%</span>
+  </div>
+
+  <div id="lantern-indicator">🔦 ФОНАРЬ ВКЛЮЧЕН</div>
+
+  <div id="overlay">
+    <h1>🗿 ТОМСКАЯ ПИСАНИЦА</h1>
+    <p class="subtitle">Наследие Древних Шаманов</p>
+    <div class="instructions">
+      <p>🎯 Найдите все 12 рисунков</p>
+      <p>👆 <span class="key-hint">СВАЙП</span> — движение</p>
+      <p>👆 <span class="key-hint">ТАП</span> — разбить / собрать</p>
+      <p>🔦 <span class="key-hint">ДОЛГИЙ ТАП</span> — фонарь</p>
+      <p>⛏️ Кирки (жёлтые) | 🔮 Кристаллы (фиолетовые)</p>
+      <p>👻 Духи при разбитии (55%)</p>
+    </div>
+    <button id="startBtn">🏛️ НАЧАТЬ</button>
+    <p style="color:#ffd700;font-size:clamp(9px,2.2vw,14px);">или <span class="key-hint">ПРОБЕЛ</span></p>
+  </div>
+
+  <script>
+    (function() {
+      var canvas = document.getElementById('gameCanvas');
+      var ctx = canvas.getContext('2d');
+      var overlay = document.getElementById('overlay');
+      var lanternInd = document.getElementById('lantern-indicator');
+      var startBtn = document.getElementById('startBtn');
+      var container = document.getElementById('game-container');
+
+      var gameRunning = false;
+      var gameOver = false;
+      var mouseX = 500;
+      var mouseY = 325;
+      var score = 0;
+      var health = 5;
+      var tools = 3;
+      var crystals = 0;
+      var found = 0;
+      var lantern = false;
+      var energy = 100;
+      var hurt = 0;
+      var frame = 0;
+      var player = { x: 500, y: 550, speed: 4.5, dir: 1 };
+
+      var drawingsData = [
+        { name: 'Лось', sym: '🦌', rare: false },
+        { name: 'Птица', sym: '🦅', rare: false },
+        { name: 'Солнце', sym: '☀️', rare: false },
+        { name: 'Охотник', sym: '🏹', rare: false },
+        { name: 'Шаман', sym: '🧙', rare: true },
+        { name: 'Змей', sym: '🐍', rare: false },
+        { name: 'Рыба', sym: '🐟', rare: false },
+        { name: 'Медведь', sym: '🐻', rare: true },
+        { name: 'Колесница', sym: '⚡', rare: false },
+        { name: 'Танец', sym: '💃', rare: false },
+        { name: 'Древо', sym: '🌳', rare: true },
+        { name: 'Врата', sym: '🚪', rare: true }
+      ];
+
+      var drawings = [],
+          ghosts = [],
+          toolItems = [],
+          crystalItems = [];
+      var particles = [];
+
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+
+      window.addEventListener('resize', resize);
+      window.addEventListener('orientationchange', function() {
+        setTimeout(resize, 200);
+      });
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', resize);
+      }
+      resize();
+
+      function screenToWorld(sx, sy) {
+        return {
+          x: (sx / canvas.width) * 1000,
+          y: (sy / canvas.height) * 650
+        };
+      }
+
+      function worldToScreen(wx, wy) {
+        var rect = canvas.getBoundingClientRect();
+        return {
+          x: rect.left + (wx / 1000) * canvas.width,
+          y: rect.top + (wy / 650) * canvas.height
+        };
+      }
+
+      function placeDrawings() {
+        drawings = [];
+        var used = [];
+        for (var i = 0; i < drawingsData.length; i++) {
+          var ok = false,
+              tries = 0,
+              px, py;
+          while (!ok && tries < 100) {
+            px = 80 + Math.random() * 840;
+            py = 120 + Math.random() * 380;
+            ok = true;
+            for (var j = 0; j < used.length; j++) {
+              if (Math.sqrt((px - used[j].x) ** 2 + (py - used[j].y) ** 2) < 100) {
+                ok = false;
+                break;
+              }
+            }
+            tries++;
+          }
+          used.push({ x: px, y: py });
+          drawings.push({
+            x: px,
+            y: py,
+            name: drawingsData[i].name,
+            sym: drawingsData[i].sym,
+            rare: drawingsData[i].rare,
+            found: false,
+            hidden: drawingsData[i].rare
+          });
+        }
+      }
+
+      function spawnTools() {
+        toolItems = [];
+        for (var i = 0; i < 15; i++) {
+          toolItems.push({ x: 60 + Math.random() * 880, y: 130 + Math.random() * 380 });
+        }
+      }
+
+      function spawnCrystals() {
+        crystalItems = [];
+        for (var i = 0; i < 10; i++) {
+          crystalItems.push({ x: 70 + Math.random() * 860, y: 140 + Math.random() * 370 });
+        }
+      }
+
+      function spawnGhost(x, y) {
+        var n = 1 + Math.floor(Math.random() * 2);
+        for (var i = 0; i < n; i++) {
+          ghosts.push({
+            x: x + (Math.random() - 0.5) * 150,
+            y: y + (Math.random() - 0.5) * 150,
+            speed: 0.8 + Math.random() * 1.5,
+            float: Math.random() * 6.28,
+            life: 400 + Math.floor(Math.random() * 200)
+          });
+        }
+      }
+
+      function addParticles(x, y, color, n) {
+        for (var i = 0; i < n; i++) {
+          particles.push({
+            x: x,
+            y: y,
+            vx: (Math.random() - 0.5) * 6,
+            vy: (Math.random() - 0.5) * 6 - 2,
+            life: 1,
+            decay: 0.03,
+            color: color,
+            size: 2 + Math.random() * 4
+          });
+        }
+      }
+
+      function getInputPos(e) {
+        var cx, cy;
+        if (e.touches && e.touches.length > 0) {
+          cx = e.touches[0].clientX;
+          cy = e.touches[0].clientY;
+        } else if (e.changedTouches && e.changedTouches.length > 0) {
+          cx = e.changedTouches[0].clientX;
+          cy = e.changedTouches[0].clientY;
+        } else {
+          cx = e.clientX;
+          cy = e.clientY;
+        }
+        return screenToWorld(cx, cy);
+      }
+
+      function showGlyphLabel(worldX, worldY, text, color) {
+        var pos = worldToScreen(worldX, worldY);
+        var div = document.createElement('div');
+        div.className = 'glyph-label';
+        div.textContent = text;
+        div.style.left = pos.x + 'px';
+        div.style.top = pos.y + 'px';
+        div.style.color = color || '#ffd700';
+        container.appendChild(div);
+        setTimeout(function() { div.remove(); }, 2000);
+      }
+
+      function showPlayerLoot(worldX, worldY, text, color) {
+        var pos = worldToScreen(worldX, worldY);
+        var div = document.createElement('div');
+        div.className = 'player-loot';
+        div.textContent = text;
+        div.style.left = pos.x + 'px';
+        div.style.top = (pos.y - 40) + 'px';
+        div.style.color = color || '#ffffff';
+        container.appendChild(div);
+        setTimeout(function() { div.remove(); }, 1500);
+      }
+
+      function toggleLantern() {
+        if (!gameRunning || gameOver) return;
+        if (lantern) {
+          lantern = false;
+          lanternInd.style.display = 'none';
+          return;
+        }
+        if (energy <= 0) {
+          if (crystals > 0) {
+            crystals--;
+            energy = Math.min(100, energy + 40);
+            showPlayerLoot(player.x, player.y, '🔮 +40% энергии', '#cc88ff');
+            updateUI();
+          } else {
+            showPlayerLoot(player.x, player.y, 'Нет энергии!', '#ff8888');
+            return;
+          }
+        }
+        lantern = true;
+        lanternInd.style.display = 'block';
+        lanternInd.textContent = '🔦 ФОНАРЬ | ' + Math.floor(energy) + '% | 🔮 ' + crystals;
+      }
+
+      canvas.addEventListener('mousemove', function(e) {
+        var p = getInputPos(e);
+        mouseX = p.x;
+        mouseY = p.y;
+      });
+
+      canvas.addEventListener('touchmove', function(e) {
+        e.preventDefault();
+        var p = getInputPos(e);
+        mouseX = p.x;
+        mouseY = p.y;
+      }, { passive: false });
+
+      var touchStartTime = 0;
+      canvas.addEventListener('touchstart', function(e) {
+        e.preventDefault();
+        var p = getInputPos(e);
+        mouseX = p.x;
+        mouseY = p.y;
+        touchStartTime = Date.now();
+      }, { passive: false });
+
+      canvas.addEventListener('touchend', function(e) {
+        e.preventDefault();
+        var dt = Date.now() - touchStartTime;
+        if (dt < 300) {
+          handleClick();
+        } else if (dt >= 500) {
+          toggleLantern();
+        }
+      });
+
+      canvas.addEventListener('click', function(e) {
+        handleClick();
+      });
+
+      canvas.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        toggleLantern();
+      });
+
+      document.addEventListener('keydown', function(e) {
+        if (e.code === 'Space') {
+          e.preventDefault();
+          if (!gameRunning && !gameOver) startGame();
+          else if (gameOver) restartGame();
+        }
+        if (e.code === 'KeyF') {
+          e.preventDefault();
+          toggleLantern();
+        }
+        if (e.code === 'KeyC') {
+          e.preventDefault();
+          if (gameRunning && !gameOver && crystals > 0 && energy < 100) {
+            crystals--;
+            energy = Math.min(100, energy + 40);
+            showPlayerLoot(player.x, player.y, '🔮 +40% энергии', '#cc88ff');
+            updateUI();
+            if (!lantern && energy > 0) {
+              lantern = true;
+              lanternInd.style.display = 'block';
+              lanternInd.textContent = '🔦 ФОНАРЬ | ' + Math.floor(energy) + '% | 🔮 ' + crystals;
+            }
+          }
+        }
+      });
+
+      function handleClick() {
+        if (!gameRunning || gameOver) return;
+
+        for (var i = toolItems.length - 1; i >= 0; i--) {
+          var t = toolItems[i];
+          if (Math.sqrt((player.x - t.x) ** 2 + (player.y - t.y) ** 2) < 35) {
+            tools++;
+            addParticles(t.x, t.y, '#ffd700', 10);
+            showPlayerLoot(player.x, player.y, '+1 кирка', '#ffd700');
+            toolItems.splice(i, 1);
+            updateUI();
+            return;
+          }
+        }
+
+        for (var i = crystalItems.length - 1; i >= 0; i--) {
+          var c = crystalItems[i];
+          if (Math.sqrt((player.x - c.x) ** 2 + (player.y - c.y) ** 2) < 35) {
+            crystals++;
+            addParticles(c.x, c.y, '#cc88ff', 12);
+            showPlayerLoot(player.x, player.y, '+1 🔮', '#cc88ff');
+            crystalItems.splice(i, 1);
+            updateUI();
+            return;
+          }
+        }
+
+        for (var i = 0; i < drawings.length; i++) {
+          var d = drawings[i];
+          if (d.found) continue;
+          var dist = Math.sqrt((player.x - d.x) ** 2 + (player.y - d.y) ** 2);
+          var range = d.hidden ? (lantern ? 60 : 0) : 55;
+          if (dist < range && tools > 0) {
+            d.found = true;
+            found++;
+            tools--;
+            score += d.rare ? 300 : 100;
+            var glyphText = (d.rare ? '⭐ ' : '') + '«' + d.name + '»';
+            var glyphColor = d.rare ? '#ffd700' : '#ffaa00';
+            showGlyphLabel(d.x, d.y, glyphText, glyphColor);
+            var lootText = '';
+            if (Math.random() < 0.3) {
+              var cc = 1 + Math.floor(Math.random() * 8);
+              crystals += cc;
+              lootText += '🔮+' + cc + ' ';
+            }
+            if (Math.random() < 0.4) {
+              var tt = 1 + Math.floor(Math.random() * 3);
+              tools += tt;
+              lootText += '⛏️+' + tt + ' ';
+            }
+            if (Math.random() < 0.55) {
+              spawnGhost(d.x, d.y);
+              lootText += '👻Духи! ';
+            }
+            if (lootText) showPlayerLoot(player.x, player.y, lootText.trim(), '#ffffff');
+            addParticles(d.x, d.y, '#ffd700', d.rare ? 30 : 20);
+            updateUI();
+            if (found >= 12) {
+              setTimeout(function() {
+                gameOver = true;
+                gameRunning = false;
+                showEndScreen(true);
+              }, 1500);
+            }
+            return;
+          }
+        }
+      }
+
+      function update() {
+        if (!gameRunning || gameOver) return;
+        frame++;
+        var dx = mouseX - player.x;
+        var dy = mouseY - player.y;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 3) {
+          player.x += (dx / dist) * player.speed;
+          player.y += (dy / dist) * player.speed;
+          player.dir = dx > 0 ? 1 : -1;
+        }
+        player.x = Math.max(30, Math.min(970, player.x));
+        player.y = Math.max(40, Math.min(610, player.y));
+        if (hurt > 0) hurt--;
+
+        if (lantern) {
+          energy = Math.max(0, energy - 0.2);
+          if (energy <= 0) {
+            lantern = false;
+            lanternInd.style.display = 'none';
+            showPlayerLoot(player.x, player.y, 'Фонарь разряжен!', '#ff8888');
+          }
+          if (lantern) {
+            lanternInd.textContent = '🔦 ФОНАРЬ | ' + Math.floor(energy) + '% | 🔮 ' + crystals;
+          }
+        } else {
+          if (energy < 100) energy = Math.min(100, energy + 0.05);
+        }
+
+        for (var i = ghosts.length - 1; i >= 0; i--) {
+          var g = ghosts[i];
+          g.life--;
+          var sx = player.x - g.x;
+          var sy = player.y - g.y;
+          var sd = Math.sqrt(sx * sx + sy * sy) || 1;
+          g.x += (sx / sd) * g.speed;
+          g.y += (sy / sd) * g.speed;
+          g.float += 0.05;
+          if (Math.sqrt((player.x - g.x) ** 2 + (player.y - g.y) ** 2) < 26 && hurt <= 0) {
+            health--;
+            hurt = 50;
+            addParticles(player.x, player.y, '#ff0000', 15);
+            showPlayerLoot(player.x, player.y, '-1 ❤️', '#ff4444');
+            if (health <= 0) {
+              gameOver = true;
+              gameRunning = false;
+              showEndScreen(false);
+            }
+          }
+          if (g.life <= 0) ghosts.splice(i, 1);
+        }
+
+        if (frame % 300 === 0 && toolItems.length < 8) {
+          toolItems.push({ x: 60 + Math.random() * 880, y: 130 + Math.random() * 380 });
+        }
+        if (frame % 400 === 0 && crystalItems.length < 6) {
+          crystalItems.push({ x: 70 + Math.random() * 860, y: 140 + Math.random() * 370 });
+        }
+
+        particles = particles.filter(function(p) {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.life -= p.decay;
+          return p.life > 0;
+        });
+        updateUI();
+      }
+
+      function updateUI() {
+        document.getElementById('fd').textContent = found;
+        document.getElementById('hd').textContent = health;
+        document.getElementById('td').textContent = tools;
+        document.getElementById('cd').textContent = crystals;
+        document.getElementById('sd').textContent = score;
+        document.getElementById('gd').textContent = ghosts.length;
+        document.getElementById('ed').textContent = Math.floor(energy);
+      }
+
+      function draw() {
+        // Сохраняем пропорции: рисуем в координатах 1000x650,
+        // а canvas сам растянется с object-fit:contain
+        var scaleX = canvas.width / 1000;
+        var scaleY = canvas.height / 650;
+        var scale = Math.min(scaleX, scaleY);
+        var offsetX = (canvas.width - 1000 * scale) / 2;
+        var offsetY = (canvas.height - 650 * scale) / 2;
+
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.setTransform(scale, 0, 0, scale, offsetX, offsetY);
+
+        var sg = ctx.createLinearGradient(0, 0, 0, 400);
+        sg.addColorStop(0, '#87CEEB');
+        sg.addColorStop(1, '#c8b896');
+        ctx.fillStyle = sg;
+        ctx.fillRect(0, 0, 1000, 400);
+        ctx.fillStyle = '#ffd700';
+        ctx.beginPath();
+        ctx.arc(850, 80, 40, 0, 6.28);
+        ctx.fill();
+        ctx.fillStyle = '#8b7d6b';
+        ctx.beginPath();
+        ctx.moveTo(0, 420);
+        for (var i = 0; i <= 20; i++) ctx.lineTo(i * 55, 250 + Math.sin(i * 0.7) * 80);
+        ctx.lineTo(1000, 420);
+        ctx.fill();
+        ctx.fillStyle = '#6b5d4b';
+        ctx.beginPath();
+        ctx.moveTo(0, 450);
+        for (var i = 0; i <= 25; i++) ctx.lineTo(i * 42, 300 + Math.sin(i * 0.5) * 70);
+        ctx.lineTo(1000, 450);
+        ctx.fill();
+        ctx.fillStyle = '#8b7b5a';
+        ctx.fillRect(0, 450, 1000, 200);
+
+        for (var i = 0; i < toolItems.length; i++) {
+          var t = toolItems[i];
+          ctx.fillStyle = 'rgba(255,215,0,0.3)';
+          ctx.beginPath();
+          ctx.arc(t.x, t.y, 12, 0, 6.28);
+          ctx.fill();
+          ctx.fillStyle = '#ffd700';
+          ctx.beginPath();
+          ctx.arc(t.x, t.y, 9, 0, 6.28);
+          ctx.fill();
+          ctx.fillStyle = '#8b6914';
+          ctx.font = '16px Arial';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('⛏️', t.x, t.y);
+        }
+
+        for (var i = 0; i < crystalItems.length; i++) {
+          var c = crystalItems[i];
+          var glow = Math.sin(frame * 0.06) * 0.4 + 0.6;
+          ctx.fillStyle = 'rgba(180,130,255,' + glow + ')';
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, 10, 0, 6.28);
+          ctx.fill();
+          ctx.fillStyle = '#fff';
+          ctx.font = '16px Arial';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('🔮', c.x, c.y);
+        }
+
+        for (var i = 0; i < drawings.length; i++) {
+          var d = drawings[i];
+          if (d.found) continue;
+          ctx.save();
+          ctx.translate(d.x, d.y);
+          if (!d.hidden || lantern) {
+            var alpha = Math.sin(frame * 0.04) * 0.3 + 0.4;
+            ctx.fillStyle = 'rgba(255,140,0,' + alpha + ')';
+            ctx.beginPath();
+            ctx.arc(0, 0, 24, 0, 6.28);
+            ctx.fill();
+          }
+          ctx.fillStyle = '#9b8365';
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 24, 20, 0, 0, 6.28);
+          ctx.fill();
+          ctx.fillStyle = (d.hidden && !lantern) ? '#5a4a3a' : '#6b3a2a';
+          ctx.font = '22px Arial';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText((d.hidden && !lantern) ? '?' : d.sym, 0, 0);
+          ctx.restore();
+        }
+
+        for (var i = 0; i < ghosts.length; i++) {
+          var g = ghosts[i];
+          ctx.save();
+          ctx.translate(g.x, g.y);
+          var fy = Math.sin(g.float) * 8;
+          var alpha = Math.min(1, g.life / 100);
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = '#fff';
+          ctx.beginPath();
+          ctx.arc(0, -4 + fy, 10, Math.PI, 0);
+          for (var w = 0; w < 4; w++) {
+            var wx = -10 + w * 5;
+            var wy = 6 + fy + (w % 2 === 0 ? 0 : 4);
+            ctx.lineTo(wx + 2.5, wy);
+          }
+          ctx.fill();
+          ctx.fillStyle = '#000';
+          ctx.fillRect(-4, -6 + fy, 2.5, 2.5);
+          ctx.fillRect(2, -6 + fy, 2.5, 2.5);
+          ctx.restore();
+        }
+        ctx.globalAlpha = 1;
+
+        if (hurt <= 0 || Math.floor(frame / 4) % 2 === 0) {
+          ctx.save();
+          ctx.translate(player.x, player.y);
+          if (player.dir < 0) ctx.scale(-1, 1);
+          ctx.fillStyle = '#4a3020';
+          ctx.fillRect(-5, 8, 4, 11);
+          ctx.fillRect(1, 8, 4, 11);
+          ctx.fillStyle = '#8b6914';
+          ctx.fillRect(-8, -5, 16, 17);
+          ctx.fillStyle = '#d4a76a';
+          ctx.beginPath();
+          ctx.arc(0, -11, 8, 0, 6.28);
+          ctx.fill();
+          ctx.fillStyle = '#5a3d2b';
+          ctx.fillRect(-9, -19, 18, 5);
+          ctx.fillRect(-6, -24, 12, 7);
+          ctx.fillStyle = '#000';
+          ctx.beginPath();
+          ctx.arc(-3, -12, 1.5, 0, 6.28);
+          ctx.arc(3, -12, 1.5, 0, 6.28);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        if (lantern) {
+          var grd = ctx.createRadialGradient(player.x, player.y, 40, player.x, player.y, 170);
+          grd.addColorStop(0, 'rgba(255,255,200,0.3)');
+          grd.addColorStop(1, 'rgba(255,255,200,0)');
+          ctx.fillStyle = grd;
+          ctx.beginPath();
+          ctx.arc(player.x, player.y, 170, 0, 6.28);
+          ctx.fill();
+        }
+
+        for (var i = 0; i < particles.length; i++) {
+          var p = particles[i];
+          ctx.fillStyle = p.color;
+          ctx.globalAlpha = p.life;
+          ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+        }
+        ctx.globalAlpha = 1;
+
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+      }
+
+      function showEndScreen(win) {
+        lanternInd.style.display = 'none';
+        overlay.style.display = 'flex';
+        if (win) {
+          overlay.innerHTML = '<h1 style="color:#ffd700;">🎉 ПОБЕДА!</h1><p style="font-size:clamp(16px,4vw,24px);">Все рисунки найдены!</p><p>⭐ ' + score + ' | 🔮 ' + crystals + '</p><button id="restartBtn">🔄 ИГРАТЬ СНОВА</button>';
+        } else {
+          overlay.innerHTML = '<h1 style="color:#ff4444;">👻 ДУХИ ОДОЛЕЛИ</h1><p>Найдено: ' + found + '/12 | ⭐ ' + score + '</p><button id="restartBtn">🔄 ПОПРОБОВАТЬ СНОВА</button>';
+        }
+        setTimeout(function() {
+          var rb = document.getElementById('restartBtn');
+          if (rb) rb.onclick = function() { restartGame(); };
+        }, 100);
+      }
+
+      function gameLoop() {
+        if (gameRunning && !gameOver) { update();
+          draw(); }
+        requestAnimationFrame(gameLoop);
+      }
+
+      function startGame() {
+        resize();
+        gameRunning = true;
+        gameOver = false;
+        score = 0;
+        health = 5;
+        tools = 3;
+        crystals = 0;
+        found = 0;
+        lantern = false;
+        energy = 100;
+        hurt = 0;
+        frame = 0;
+        player.x = 500;
+        player.y = 550;
+        ghosts = [];
+        particles = [];
+        placeDrawings();
+        spawnTools();
+        spawnCrystals();
+        overlay.style.display = 'none';
+        lanternInd.style.display = 'none';
+        updateUI();
+        draw();
+      }
+
+      function restartGame() { startGame(); }
+
+      startBtn.onclick = function() { startGame(); };
+      placeDrawings();
+      spawnTools();
+      spawnCrystals();
+      gameLoop();
+      updateUI();
+    })();
+  </script>
+</body>
+</html>
