@@ -726,7 +726,19 @@
       }
 
       function restartGame() { startGame(); }
-      startBtn.onclick = startGame;
+      
+      // Исправление для мобильных устройств: обработка нажатия на кнопку "Начать"
+      startBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        startGame();
+      });
+      
+      // Также обрабатываем touchstart для надежности на мобильных
+      startBtn.addEventListener('touchstart', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        startGame();
+      }, { passive: false });
       
       // Первичный запуск логов
       setTimeout(function() {
